@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+artifacts/
+applied_vacancies.json
+manual_review.json

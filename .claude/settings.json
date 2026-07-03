@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/Users/user/Documents/Projects/AutoResponseHH/.venv/Scripts/python.exe\" -m ensurepip)",
+      "Bash(\"C:/Users/user/Documents/Projects/AutoResponseHH/.venv/Scripts/python.exe\" -m pip install playwright-stealth)",
+      "Bash(\"C:/Users/user/Documents/Projects/AutoResponseHH/.venv/Scripts/python.exe\" \"C:/Users/user/Documents/Projects/AutoResponseHH/main.py\")",
+      "Bash(\"C:/Users/user/Documents/Projects/AutoResponseHH/.venv/Scripts/python.exe\" \"C:/Users/user/AppData/Local/Temp/claude/c--Users-user-Documents-Projects-AutoResponseHH/32a6a6cf-f9ad-4f82-a739-df7d55914b9c/scratchpad/diag_cover_letter.py\")",
+      "Bash(PYTHONIOENCODING=utf-8 \"C:/Users/user/Documents/Projects/AutoResponseHH/.venv/Scripts/python.exe\" \"C:/Users/user/AppData/Local/Temp/claude/c--Users-user-Documents-Projects-AutoResponseHH/32a6a6cf-f9ad-4f82-a739-df7d55914b9c/scratchpad/diag_cover_letter.py\")",
+      "PowerShell(Resolve-DnsName hh.ru -Server 8.8.8.8 -ErrorAction SilentlyContinue)",
+      "PowerShell(Resolve-DnsName google.com -ErrorAction SilentlyContinue)",
+      "PowerShell(nslookup hh.ru 8.8.8.8 2>&1)",
+      "PowerShell(nslookup google.com 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://hh.ru\" -TimeoutSec 15 -UseBasicParsing; Write-Output \"HTTP OK: $\\($r.StatusCode\\)\" } catch { Write-Output \"HTTP FAILED: $\\($_.Exception.Message\\)\" })",
+      "Read(//c/Users/user/Downloads/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\user\\Downloads"
+    ]
+  }
+}

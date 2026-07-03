@@ -1,0 +1,116 @@
+from playwright.sync_api import Page
+
+class Login:
+    def __init__(self, page: Page):
+        self.page = page
+    @property
+    def enter_link(self):
+        return self.page.locator("[data-qa='login']")
+    @property
+    def enter_button(self):
+        return self.page.get_by_role("button", name="Войти")
+    @property
+    def login_number(self):
+        return self.page.get_by_role("textbox").nth(1)
+    @property
+    def password_textbox(self):
+        return self.page.get_by_role("textbox")
+    @property
+    def button_enter_with_password(self):
+        return self.page.get_by_role("button", name="Войти с паролем")
+    @property
+    def expected_text_page_password(self):
+        return self.page.get_by_role("heading", name="Введите пароль")
+    @property
+    def password_button(self):
+        return self.page.get_by_role("button", name="Войти", exact=True)
+    @property
+    def text_resume_and_profile(self):
+        return self.page.get_by_role("link", name="Резюме и профиль")
+    @property
+    def text_response(self):
+        return self.page.get_by_role("link", name="Отклики").first
+    
+class AutoResponse:
+    """Общие локторы для всей системы"""
+    def __init__(self, page: Page):
+        self.page = page
+
+    @property
+    def textbox_search(self):
+        return self.page.locator("[data-qa='search-input']")
+    @property
+    def button_search(self):
+        return self.page.get_by_role("button", name="Найти")
+    @property
+    def button_understand(self):
+        return self.page.get_by_role("button", name="Понятно")
+    @property
+    def button_response(self):
+        return self.page.locator("[data-qa='vacancy-serp__vacancy_response']")
+    @property
+    def modal_window(self):
+        return self.page.get_by_role("dialog", name="Отклик на вакансию")
+    @property
+    def modal_window_resume_field(self):
+        return self.page.get_by_role("button").locator("[data-qa='cell']", has_text="QA")
+    @property
+    def heading_response_on_vacancie(self):
+        return self.page.locator("[data-qa='title']", has_text="Отклик на вакансию")
+    @property
+    def heading_response_answer_question(self):
+        return self.page.locator("[data-qa='title']", has_text="Ответьте на вопросы")
+    @property
+    def modal_window_drop_base(self):
+        return self.page.locator("[data-qa='drop-base']")
+    @property
+    def modal_window_drop_base_resume_auto(self):
+        return self.page.locator("label", has_text="Automation QA Engineer").locator("[data-qa='cell']") # locator("[data-qa='magritte-select-option-c374ed60ff0eb718910039ed1f654761513863']")
+    @property
+    def modal_window_button_response(self):
+        return self.page.locator("[data-qa='vacancy-response-submit-popup']")
+    @property
+    def status(self):
+        return self.page.get_by_text("Отклик отправлен").first
+    @property
+    def number_pagination(self):
+        return self.page.locator("[data-qa='pager-block']").locator("ul li a[data-qa='pager-page']")
+    @property
+    def response_out_of_Russia(self):
+        return self.page.locator("[data-qa='relocation-warning-title']")
+    @property
+    def response_permanent_button(self):
+        return self.page.get_by_role("button", name="Все равно откликнуться")
+    @property
+    def button_add_cover_letter(self):
+        return self.page.locator("[data-qa='add-cover-letter']")
+    @property
+    def textbox_cover_letter(self):
+        return self.page.get_by_role("textbox", name="Сопроводительное письмо")
+    @property
+    def open_chat(self):
+        return self.page.locator("[data-qa='chatik-root']")
+    @property
+    def close_chat_button(self):
+        return self.page.get_by_role("button", name="close")
+    @property
+    def modal_close_button(self):
+        return self.page.locator("[data-qa='response-popup-close']")
+    @property
+    def pagination_next(self):
+        return self.page.locator("[data-qa='pager-next']")
+    @property
+    def cancel_button_for_response_to_go_to_page_out_hh(self):
+        return self.page.locator("[data-qa='vacancy-response-link-advertising-cancel']")
+    @property
+    def text_response_to_go_to_page_out_hh(self):
+        return self.page.get_by_text('Вакансия с прямым откликом')
+    @property
+    def filter_button(self):
+        return self.page.locator("[data-qa='header-search-filters-button']")
+    @property
+    def filter_experiance(self):
+        return self.page.locator("[data-qa='search-filter-experience-value-noExperience']")
+    @property
+    def filter_submit(self):
+        return self.page.locator("[data-qa='search-drawer-filters-submit']")
