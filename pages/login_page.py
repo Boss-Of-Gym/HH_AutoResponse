@@ -27,11 +27,6 @@ class LoginPage(BasePage):
         self.click(selector_or_locator=self.locator.password_button)
 
     def assert_login_on_page(self) -> None:
-        # Проверяем реальный URL после логина
-        current_url = self.page.url
-        if "login" in current_url or "account" not in current_url and "hh.ru" not in current_url:
-            # Мягкая проверка — не падаем, но логируем
-            pass
         # Проверяем наличие элементов авторизованного пользователя
         has_profile = self.has_text(
             selector_or_locator=self.locator.text_resume_and_profile,

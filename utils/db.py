@@ -66,6 +66,10 @@ def _migrate_legacy() -> None:
     if applied_path.exists():
         try:
             raw = json.loads(applied_path.read_text(encoding="utf-8"))
+            if not isinstance(raw, list):
+                logger.warning(f"Неожиданный формат {_LEGACY_APPLIED}: ожидался list, получен {type(raw).__name__}. Файл сохранён как .bak.")
+                applied_path.rename(applied_path.with_suffix(".json.bak"))
+                raw = []
             if raw:
                 if isinstance(raw[0], str):
                     applied_dict = {
@@ -120,6 +124,16 @@ def load_applied() -> dict:
             "SELECT url, title, company, applied_at, query FROM applied_vacancies"
         ).fetchall()
     return {row["url"]: dict(row) for row in rows}
+
+
+def delete_expired_applied(cutoff_iso: str) -> int:
+    """Удаляет из applied_vacancies записи старше cutoff_iso. Возвращает количество удалённых."""
+    with _connect() as conn:
+        cur = conn.execute(
+            "DELETE FROM applied_vacancies WHERE applied_at != '' AND applied_at < ?",
+            (cutoff_iso,),
+        )
+        return cur.rowcount
 
 
 def save_applied(applied: dict) -> None:

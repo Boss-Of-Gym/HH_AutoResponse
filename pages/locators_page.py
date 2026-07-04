@@ -129,7 +129,7 @@ class AutoResponse:
 
     @property
     def close_chat_button(self):
-        return self.page.get_by_role("button", name="close")
+        return self.page.locator("[data-qa='chatik-root']").get_by_role("button", name="close")
 
     @property
     def modal_close_button(self):

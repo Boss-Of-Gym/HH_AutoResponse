@@ -56,16 +56,15 @@ def run(dry_run: bool = False) -> None:
             args=["--start-maximized", "--window-size=1920,1080"],
             channel="chrome",
         )
-        context = browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            locale=config.Browser.LOCALE,
-            timezone_id=config.Browser.TIMEZONE,
-        )
-        page = context.new_page()
-        page.set_default_timeout(config.Timeouts.PAGE_LOAD)
-        page.set_default_navigation_timeout(config.Timeouts.PAGE_LOAD)
-
         try:
+            context = browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                locale=config.Browser.LOCALE,
+                timezone_id=config.Browser.TIMEZONE,
+            )
+            page = context.new_page()
+            page.set_default_timeout(config.Timeouts.PAGE_LOAD)
+            page.set_default_navigation_timeout(config.Timeouts.PAGE_LOAD)
             # Авторизация с retry при сетевых ошибках
             for attempt in range(1, _MAX_RETRIES + 1):
                 try:
@@ -128,15 +127,14 @@ def check_status() -> None:
             args=["--start-maximized"],
             channel="chrome",
         )
-        context = browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            locale=config.Browser.LOCALE,
-            timezone_id=config.Browser.TIMEZONE,
-        )
-        page = context.new_page()
-        page.set_default_timeout(config.Timeouts.PAGE_LOAD)
-
         try:
+            context = browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                locale=config.Browser.LOCALE,
+                timezone_id=config.Browser.TIMEZONE,
+            )
+            page = context.new_page()
+            page.set_default_timeout(config.Timeouts.PAGE_LOAD)
             auth = Auth(page)
             auth.authentication(page)
 

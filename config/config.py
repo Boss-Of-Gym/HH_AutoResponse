@@ -188,5 +188,6 @@ class Config:
 
 config = Config()
 
-# Module-level aliases so callers can use config.Profile.X pattern
+# Module-level aliases so callers can use config.Profile.X / config.Browser.X pattern
 Profile = ProfileConfig()
+Browser = BrowserConfig()

@@ -664,26 +664,20 @@ class AutoResponsePage(BasePage):
         db.save_applied(applied)
 
     def _expire_applied(self, applied: dict) -> dict:
-        """п.13: удаляет из applied записи старше APPLIED_EXPIRY_DAYS"""
+        """п.13: удаляет из applied и из БД записи старше APPLIED_EXPIRY_DAYS"""
         days = config.BotConfig.APPLIED_EXPIRY_DAYS
         if not days:
             return applied
         cutoff = datetime.now() - timedelta(days=days)
-        result = {}
-        expired = 0
-        for url, meta in applied.items():
-            raw_dt = meta.get("applied_at", "")
-            if raw_dt:
-                try:
-                    if datetime.fromisoformat(raw_dt) < cutoff:
-                        expired += 1
-                        continue
-                except (ValueError, TypeError):
-                    pass
-            result[url] = meta
-        if expired:
-            logger.info(f"Удалено {expired} устаревших откликов (старше {days} дней)")
-        return result
+        cutoff_iso = cutoff.isoformat(timespec="seconds")
+        deleted = db.delete_expired_applied(cutoff_iso)
+        if deleted:
+            logger.info(f"Удалено {deleted} устаревших откликов из БД (старше {days} дней)")
+        return {
+            url: meta for url, meta in applied.items()
+            if not meta.get("applied_at") or
+               datetime.fromisoformat(meta["applied_at"]) >= cutoff
+        }
 
     def _load_manual_review(self) -> set:
         return db.load_manual_review()
