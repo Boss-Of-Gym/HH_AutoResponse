@@ -683,10 +683,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Выбор резюме по содержимому вакансии
-          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Если в тексте вакансии найдено ключевое слово из левой колонки — бот отправит резюме, указанное в правой. Правила проверяются сверху вниз, используется первое совпадение. Регистр ключевых слов не важен.">ⓘ</i>
+        <div class="card-title">Выбор резюме по заголовку вакансии
+          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Если в заголовке вакансии найдено ключевое слово из левой колонки — бот отправит резюме, указанное в правой. Бот читает только заголовок, а не полный текст вакансии. Правила проверяются сверху вниз, используется первое совпадение. Регистр ключевых слов не важен.">ⓘ</i>
         </div>
-        <table class="kv-table"><thead><tr><th>Ключевое слово в тексте вакансии</th><th>Название резюме на HH.ru</th><th></th></tr></thead>
+        <table class="kv-table"><thead><tr><th>Ключевое слово в заголовке вакансии</th><th>Название резюме на HH.ru</th><th></th></tr></thead>
           <tbody id="resume-match-body"></tbody>
         </table>
         <button class="btn-add-row" onclick="addTableRow('resume-match-body','keyword','resume','Ключевое слово','Имя резюме')">+ добавить правило</button>
@@ -704,10 +704,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
         </div>
       </div>
       <div class="card">
-        <div class="card-title">Выбор шаблона письма по содержимому вакансии
-          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Аналогично выбору резюме: если в тексте вакансии найдено ключевое слово, будет отправлен соответствующий шаблон. Указывайте имя файла без расширения .txt. Если ни одно правило не совпало — письмо из раздела «Письма» → шаблон default.">ⓘ</i>
+        <div class="card-title">Выбор шаблона письма по заголовку вакансии
+          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Аналогично выбору резюме: если в заголовке вакансии найдено ключевое слово, будет отправлен соответствующий шаблон. Бот читает только заголовок, а не полный текст вакансии. Указывайте имя файла без расширения .txt. Если ни одно правило не совпало — письмо из раздела «Письма» → шаблон default.">ⓘ</i>
         </div>
-        <table class="kv-table"><thead><tr><th>Ключевое слово в тексте вакансии</th><th>Имя шаблона (без .txt)</th><th></th></tr></thead>
+        <table class="kv-table"><thead><tr><th>Ключевое слово в заголовке вакансии</th><th>Имя шаблона (без .txt)</th><th></th></tr></thead>
           <tbody id="cl-match-body"></tbody>
         </table>
         <button class="btn-add-row" onclick="addTableRow('cl-match-body','keyword','template','Ключевое слово','Имя шаблона')">+ добавить правило</button>
