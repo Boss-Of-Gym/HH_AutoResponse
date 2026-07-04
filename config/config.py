@@ -1,9 +1,40 @@
-from dataclasses import dataclass
+import json
 import os
+from dataclasses import dataclass
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
+_SETTINGS_FILE = Path(__file__).parent.parent / "settings.json"
+
+
+def _load_raw() -> dict:
+    if _SETTINGS_FILE.exists():
+        try:
+            return json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+_cfg = _load_raw()
+
+
+def _s(*keys, default=None):
+    """Drill into _cfg with dot-path keys, return default if missing."""
+    v = _cfg
+    for k in keys:
+        if not isinstance(v, dict):
+            return default
+        v = v.get(k, default)
+        if v is None:
+            return default
+    return v
+
+
+# ─── URL / Timeouts ───────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Urls:
@@ -17,79 +48,145 @@ class Timeouts:
     SHORT: int = 1_000
 
 
+# ─── Credentials ──────────────────────────────────────────────────────────────
+
 @dataclass(frozen=True)
 class Credentials:
-    LOGIN: str = os.getenv('login_number', 'default_login')
-    PASSWORD: str = os.getenv('password', 'default_password')
+    LOGIN: str = (_s("credentials", "login") or os.getenv("login_number", "default_login"))
+    PASSWORD: str = (_s("credentials", "password") or os.getenv("password", "default_password"))
 
+
+# ─── Profile (for cover letters) ──────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class ProfileConfig:
+    NAME: str = (_s("profile", "name") or "")
+    PHONE: str = (_s("profile", "phone") or "")
+    EMAIL: str = (_s("profile", "email") or _s("credentials", "login") or "")
+    CITY: str = (_s("profile", "city") or "")
+    YEARS_EXPERIENCE: str = (_s("profile", "years_experience") or "")
+    KEY_SKILLS: str = (_s("profile", "key_skills") or "")
+    GITHUB: str = (_s("profile", "github") or "")
+    PORTFOLIO: str = (_s("profile", "portfolio") or "")
+    POSITION: str = (_s("profile", "position") or "QA Engineer")
+
+
+# ─── Search ───────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class SearchConfig:
-    # 1=Москва, 2=Санкт-Петербург, 113=Россия
-    AREA: str = "113"
-    EXPERIENCE: tuple = ("between1And3", "between3And6")
-    QUERIES: tuple = (
-        "Тестировщик",
-        "QA engineer",
-        "Автоматизатор тестирования",
-        "QA automation",
+    AREA: str = (_s("search", "area") or "113")
+    EXPERIENCE: tuple = tuple(
+        _s("search", "experience") or ["between1And3", "between3And6"]
     )
-    MAX_PAGES: int = 99
+    QUERIES: tuple = tuple(
+        _s("search", "queries") or [
+            "Тестировщик", "QA engineer",
+            "Автоматизатор тестирования", "QA automation",
+        ]
+    )
+    MAX_PAGES: int = int(_s("search", "max_pages") or 99)
 
+
+# ─── Bot ──────────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class BotConfig:
-    # Личный лимит откликов за сессию — оставляем запас до лимита HH (200)
-    MAX_RESPONSES_PER_RUN: int = 150
-    # Задержки между кликами (сек) — имитация человека
-    DELAY_MIN: float = 1.5
-    DELAY_MAX: float = 3.5
-    # Пауза после открытия модального окна (сек)
-    DELAY_AFTER_MODAL: float = 0.8
-    # Удалять записи из applied_vacancies.json старше N дней
-    APPLIED_EXPIRY_DAYS: int = 30
-    # Пропускать вакансии старше N дней (0 = не фильтровать)
-    FRESHNESS_DAYS: int = 14
-    # Максимум откликов на одну компанию за сессию (0 = без лимита)
-    MAX_PER_COMPANY: int = 5
-    # Писать CSV-лог откликов (response_log_YYYY-MM-DD.csv)
-    LOG_RESPONSES_CSV: bool = True
+    MAX_RESPONSES_PER_RUN: int = int(_s("bot", "max_responses_per_run") or 150)
+    DELAY_MIN: float = float(_s("bot", "delay_min") or 1.5)
+    DELAY_MAX: float = float(_s("bot", "delay_max") or 3.5)
+    DELAY_AFTER_MODAL: float = float(_s("bot", "delay_after_modal") or 0.8)
+    APPLIED_EXPIRY_DAYS: int = int(_s("bot", "applied_expiry_days") or 30)
+    FRESHNESS_DAYS: int = int(_s("bot", "freshness_days") or 14)
+    MAX_PER_COMPANY: int = int(_s("bot", "max_per_company") or 5)
+    SAVE_EVERY_N: int = int(_s("bot", "save_every_n") or 1)
+    LOG_RESPONSES_CSV: bool = bool(_s("bot", "log_responses_csv", default=True))
+    USE_API_PREFILTER: bool = bool(_s("bot", "use_api_prefilter", default=False))
+    SALARY_MIN: int = int(_s("bot", "salary_min") or 0)
+    USE_SCORING: bool = bool(_s("bot", "use_scoring", default=True))
+
+
+# ─── Resume ───────────────────────────────────────────────────────────────────
+
+def _build_tuples(section_key: str, val_key: str, defaults: list) -> tuple:
+    raw = _s("resume", section_key)
+    items = raw if isinstance(raw, list) else defaults
+    return tuple(
+        (item["keyword"], item[val_key])
+        for item in items
+        if isinstance(item, dict) and "keyword" in item and val_key in item
+    )
 
 
 @dataclass(frozen=True)
 class ResumeConfig:
-    # Имя резюме по умолчанию (часть строки — регистронезависимо)
-    DEFAULT: str = "Automation QA Engineer"
-    # Маппинг: (ключевое_слово_в_заголовке_вакансии, имя_резюме)
-    # Первое совпадение побеждает
-    MATCH: tuple = (
-        ("автоматизатор", "Automation QA Engineer"),
-        ("automation", "Automation QA Engineer"),
-        ("auto qa", "Automation QA Engineer"),
-        ("sdet", "Automation QA Engineer"),
-        ("manual", "QA Engineer"),
-        ("ручной", "QA Engineer"),
-    )
+    DEFAULT: str = (_s("resume", "default") or "Automation QA Engineer")
+    MATCH: tuple = _build_tuples("match", "resume", [
+        {"keyword": "автоматизатор", "resume": "Automation QA Engineer"},
+        {"keyword": "automation",    "resume": "Automation QA Engineer"},
+        {"keyword": "auto qa",       "resume": "Automation QA Engineer"},
+        {"keyword": "sdet",          "resume": "Automation QA Engineer"},
+        {"keyword": "manual",        "resume": "QA Engineer"},
+        {"keyword": "ручной",        "resume": "QA Engineer"},
+    ])
+    COVER_LETTER_DIR: str = (_s("resume", "cover_letter_dir") or "cover_letters")
+    COVER_LETTER_MATCH: tuple = _build_tuples("cover_letter_match", "template", [
+        {"keyword": "автоматизатор", "template": "automation"},
+        {"keyword": "automation",    "template": "automation"},
+        {"keyword": "auto qa",       "template": "automation"},
+        {"keyword": "sdet",          "template": "automation"},
+        {"keyword": "qa lead",       "template": "qa_lead"},
+        {"keyword": "lead qa",       "template": "qa_lead"},
+        {"keyword": "senior",        "template": "qa_lead"},
+        {"keyword": "ведущий",       "template": "qa_lead"},
+        {"keyword": "ручной",        "template": "manual"},
+        {"keyword": "manual",        "template": "manual"},
+    ])
 
+
+# ─── Blacklist ─────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class BlacklistConfig:
-    # Компании, на вакансии которых НЕ откликаться (проверка по вхождению строки)
-    COMPANIES: tuple = (
-        # "Рога и Копыта",
-        # "МЛМ Сеть",
+    COMPANIES: tuple = tuple(
+        _s("filters", "blacklist_companies") or []
     )
 
+
+# ─── ResumeRaise ──────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class ResumeRaiseConfig:
+    ENABLED: bool = bool(_s("schedule", "resume_raise_enabled", default=True))
+    INTERVAL_HOURS: float = float(_s("schedule", "resume_raise_interval") or 4.0)
+
+
+# ─── Browser ──────────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class BrowserConfig:
+    HEADLESS: bool = bool(_s("browser", "headless", default=False))
+    LOCALE: str = (_s("browser", "locale") or "ru-RU")
+    TIMEZONE: str = (_s("browser", "timezone") or "Europe/Moscow")
+
+
+# ─── Root Config ──────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Config:
     Urls: Urls = Urls()
     Timeouts: Timeouts = Timeouts()
     Credentials: Credentials = Credentials()
+    Profile: ProfileConfig = ProfileConfig()
     Search: SearchConfig = SearchConfig()
     Bot: BotConfig = BotConfig()
     Resume: ResumeConfig = ResumeConfig()
     Blacklist: BlacklistConfig = BlacklistConfig()
+    ResumeRaise: ResumeRaiseConfig = ResumeRaiseConfig()
+    Browser: BrowserConfig = BrowserConfig()
 
 
 config = Config()
+
+# Module-level aliases so callers can use config.Profile.X pattern
+Profile = ProfileConfig()
