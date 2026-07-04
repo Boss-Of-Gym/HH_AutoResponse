@@ -262,11 +262,17 @@ def api_run():
     else:
         cmd.append("--run")
 
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
+
     job_id = uuid.uuid4().hex[:8]
     proc = subprocess.Popen(
         cmd, cwd=str(ROOT),
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", errors="replace", bufsize=1,
+        env=env,
         creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
     )
     _active_jobs[job_id] = proc
