@@ -1,7 +1,65 @@
-.env
-__pycache__/
-*.pyc
-artifacts/
+# ── Чувствительные пользовательские данные ────────────────────────────────────
+# НИКОГДА не пушить: логин, пароль, история откликов, личные шаблоны
+
+settings.json
+autoresponse.db
+autoresponse.db-shm
+autoresponse.db-wal
+
+# Шаблоны сопроводительных писем — игнорируем всё, кроме .gitkeep
+cover_letters/*
+!cover_letters/.gitkeep
+
+cover_letter.txt
+response_log_*.csv
+
+# Бэкапы миграции JSON → SQLite
+*.bak
 applied_vacancies.json
 manual_review.json
-cover_letter.txt
+
+# Переменные окружения
+.env
+.env.*
+!.env.example
+
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+MANIFEST
+
+# ── Виртуальные окружения ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.virtualenv/
+
+# ── Артефакты / скриншоты ──────────────────────────────────────────────────────
+artifacts/
+
+# ── IDE / редакторы ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── macOS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+
+# ── Windows ────────────────────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+
+# ── Claude Code ────────────────────────────────────────────────────────────────
+.claude/
