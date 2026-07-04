@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoResponseHH</title>
+<style>
+/* ── Tokens ───────────────────────────────────────────── */
+:root {
+  --bg:#EEF0FA;--surf:#fff;--surf2:#E4E7F6;--border:#CDD2EC;
+  --text:#111827;--t2:#5E6E8C;--t3:#9BAABF;
+  --red:#C52020;--red-m:#FCEAEA;
+  --blue:#1952C4;--blue-m:#E5EDFB;
+  --green:#166534;--green-m:#DCFCE7;
+  --amber:#A85308;--amber-m:#FEF0C7;
+  --sh:0 1px 3px rgba(17,24,39,.07),0 1px 2px rgba(17,24,39,.04);
+  --sh2:0 4px 14px rgba(17,24,39,.10),0 2px 4px rgba(17,24,39,.06);
+  --r:4px;--sb:240px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0C1020;--surf:#141827;--surf2:#1C2238;--border:#283050;
+  --text:#E5EAF8;--t2:#7D8EAF;--t3:#4A5878;
+  --red:#E03535;--red-m:#2B1414;--blue:#4A79EF;--blue-m:#111E3D;
+  --green:#22C55E;--green-m:#0D2A1A;--amber:#F59E0B;--amber-m:#2A1C06;
+  --sh:0 1px 3px rgba(0,0,0,.25);--sh2:0 4px 14px rgba(0,0,0,.35);
+}}
+:root[data-theme=dark]{
+  --bg:#0C1020;--surf:#141827;--surf2:#1C2238;--border:#283050;
+  --text:#E5EAF8;--t2:#7D8EAF;--t3:#4A5878;
+  --red:#E03535;--red-m:#2B1414;--blue:#4A79EF;--blue-m:#111E3D;
+  --green:#22C55E;--green-m:#0D2A1A;--amber:#F59E0B;--amber-m:#2A1C06;
+  --sh:0 1px 3px rgba(0,0,0,.25);--sh2:0 4px 14px rgba(0,0,0,.35);
+}
+:root[data-theme=light]{
+  --bg:#EEF0FA;--surf:#fff;--surf2:#E4E7F6;--border:#CDD2EC;
+  --text:#111827;--t2:#5E6E8C;--t3:#9BAABF;
+  --red:#C52020;--red-m:#FCEAEA;--blue:#1952C4;--blue-m:#E5EDFB;
+  --green:#166534;--green-m:#DCFCE7;--amber:#A85308;--amber-m:#FEF0C7;
+  --sh:0 1px 3px rgba(17,24,39,.07);--sh2:0 4px 14px rgba(17,24,39,.10);
+}
+
+/* ── Reset ───────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;font-size:13px;
+  line-height:1.55;background:var(--bg);color:var(--text)}
+input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit}
+a{color:inherit;text-decoration:none}
+input:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid var(--blue);outline-offset:2px}
+button{cursor:pointer}
+
+/* ── Layout ──────────────────────────────────────────── */
+.layout{display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+.sidebar{width:var(--sb);flex-shrink:0;background:var(--surf);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-brand{padding:16px 14px 12px;display:flex;align-items:center;gap:9px;
+  border-bottom:1px solid var(--border)}
+.sb-icon{width:26px;height:26px;background:var(--red);border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-icon svg{fill:#fff}
+.sb-name{font-size:13px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.sb-ver{font-size:10px;color:var(--t2);letter-spacing:.06em;text-transform:uppercase}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 0}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);padding:10px 14px 3px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 11px;
+  cursor:pointer;color:var(--t2);font-size:12.5px;border-left:3px solid transparent;
+  transition:color .12s,background .12s}
+.nav-item:hover{color:var(--text);background:var(--surf2)}
+.nav-item.active{color:var(--text);font-weight:600;border-left-color:var(--red)}
+.nav-item .ico{width:14px;text-align:center;font-size:12px;opacity:.65}
+.nav-item.active .ico{opacity:1}
+.sb-bottom{padding:12px;border-top:1px solid var(--border)}
+.btn-run{width:100%;padding:9px 0;background:var(--red);color:#fff;border:none;
+  border-radius:var(--r);font-size:13px;font-weight:600;letter-spacing:.01em;
+  transition:filter .12s}
+.btn-run:hover{filter:brightness(1.1)}
+.btn-run:active{filter:brightness(.88)}
+.run-row{display:flex;gap:6px;margin-top:6px}
+.btn-ghost{flex:1;padding:6px 0;background:transparent;border:1px solid var(--border);
+  border-radius:var(--r);font-size:11.5px;color:var(--t2);
+  transition:background .12s,color .12s}
+.btn-ghost:hover{background:var(--surf2);color:var(--text)}
+.save-badge{display:none;font-size:10.5px;color:var(--green);text-align:center;
+  margin-top:6px;font-weight:500}
+.save-badge.show{display:block}
+
+/* ── Main ────────────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{padding:13px 22px;display:flex;align-items:center;justify-content:space-between;
+  background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-db{font-size:11.5px;color:var(--t2);display:flex;align-items:center;gap:5px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block}
+.theme-btn{width:30px;height:30px;border-radius:50%;background:var(--surf2);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:background .12s}
+.theme-btn:hover{background:var(--border)}
+
+/* ── Content & Sections ──────────────────────────────── */
+.content{flex:1;overflow-y:auto;padding:22px}
+.section{display:none}
+.section.active{display:block}
+#s-run.active{display:flex;flex-direction:column;height:100%;gap:12px}
+#s-letters{height:100%;display:none}
+#s-letters.active{display:flex;overflow:hidden}
+
+/* ── Cards ───────────────────────────────────────────── */
+.card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);padding:18px 20px;margin-bottom:14px}
+.card:last-child{margin-bottom:0}
+.card-title{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--t2);padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:14px}
+
+/* ── Form controls ───────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid.g3{grid-template-columns:repeat(3,1fr)}
+.form-grid.g1{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:11.5px;font-weight:500;color:var(--t2)}
+.form-hint{font-size:11px;color:var(--t3)}
+.form-input{padding:6px 10px;background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r);font-size:13px;transition:border-color .12s;width:100%}
+.form-input:focus{border-color:var(--blue);background:var(--surf)}
+.form-input::placeholder{color:var(--t3)}
+textarea.form-input{resize:vertical;min-height:80px;font-size:12.5px;line-height:1.65;
+  font-family:"Cascadia Code","SF Mono","Fira Code",monospace}
+select.form-input{cursor:pointer;-webkit-appearance:none}
+
+/* eye-wrap */
+.eye-wrap{position:relative;display:flex;align-items:center}
+.eye-wrap .form-input{padding-right:34px}
+.eye-btn{position:absolute;right:8px;background:none;border:none;
+  color:var(--t3);padding:2px;line-height:0;transition:color .12s}
+.eye-btn:hover{color:var(--t2)}
+.eye-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+/* sliders */
+.slider-row{display:flex;align-items:center;gap:10px}
+.slider-row input[type=range]{flex:1;accent-color:var(--blue);cursor:pointer}
+.slider-val{font-family:"Cascadia Code","SF Mono",monospace;font-size:12.5px;
+  font-weight:600;color:var(--blue);min-width:36px;text-align:right}
+
+/* toggles */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:3px 0}
+.toggle-info{flex:1}
+.toggle-label{font-size:13px;font-weight:500}
+.toggle-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.toggle{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.tog-track{position:absolute;inset:0;background:var(--border);border-radius:10px;transition:background .18s}
+.toggle input:checked + .tog-track{background:var(--blue)}
+.tog-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;background:#fff;
+  border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s}
+.toggle input:checked ~ .tog-knob{transform:translateX(16px)}
+
+/* checkboxes */
+.check-group{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+.check-item input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;cursor:pointer}
+
+/* tag input */
+.tag-container{display:flex;flex-wrap:wrap;gap:5px;padding:6px 8px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--r);
+  min-height:42px;cursor:text;transition:border-color .12s}
+.tag-container:focus-within{border-color:var(--blue)}
+.tag{display:inline-flex;align-items:center;gap:4px;background:var(--blue-m);
+  color:var(--blue);padding:3px 8px 3px 10px;border-radius:3px;font-size:12px;font-weight:500}
+.tag-x{background:none;border:none;color:inherit;opacity:.55;font-size:14px;
+  line-height:1;padding:0;transition:opacity .12s}
+.tag-x:hover{opacity:1}
+.tag-input{border:none;background:transparent;padding:3px 4px;font-size:12.5px;
+  color:var(--text);flex:1;min-width:100px;outline:none}
+
+/* tables */
+.kv-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.kv-table th{text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--t3);padding:3px 7px 7px;border-bottom:1px solid var(--border)}
+.kv-table td{padding:5px 4px;border-bottom:1px solid var(--border)}
+.kv-table tr:last-child td{border-bottom:none}
+.kv-table .form-input{padding:4px 7px;font-size:12px;margin:0}
+.td-del{width:28px;text-align:right}
+.btn-row-del{background:none;border:none;color:var(--t3);font-size:16px;
+  line-height:1;padding:2px 4px;border-radius:3px;transition:color .12s,background .12s}
+.btn-row-del:hover{color:var(--red);background:var(--red-m)}
+.btn-add-row{display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+  background:none;border:1px dashed var(--border);border-radius:var(--r);
+  padding:5px 12px;font-size:12px;color:var(--t2);
+  transition:border-color .12s,color .12s}
+.btn-add-row:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── Dashboard ───────────────────────────────────────── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.stat-card{background:var(--surf);border-radius:var(--r);box-shadow:var(--sh);padding:16px 18px}
+.stat-lbl{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--t2);margin-bottom:5px}
+.stat-val{font-size:28px;font-weight:700;letter-spacing:-.03em;
+  font-family:"Cascadia Code","SF Mono",monospace;font-variant-numeric:tabular-nums}
+.stat-val.c-blue{color:var(--blue)}
+.stat-val.c-green{color:var(--green)}
+.stat-val.c-red{color:var(--red)}
+.stat-sub{font-size:11px;color:var(--t2);margin-top:2px}
+.stat-trend{font-size:10.5px;font-weight:600;margin-top:4px}
+.trend-up{color:var(--green)}.trend-dn{color:var(--red)}.trend-neu{color:var(--t3)}
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.chart-wrap{height:150px}
+
+/* Funnel */
+.funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.funnel-lbl{font-size:12px;color:var(--t2);width:128px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.funnel-bar-wrap{flex:1;height:14px;background:var(--surf2);border-radius:3px;overflow:hidden}
+.funnel-bar{height:100%;border-radius:3px;transition:width .45s ease}
+.funnel-n{font-size:12px;font-weight:700;font-family:monospace;color:var(--text);width:38px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+.funnel-pct{font-size:11px;color:var(--t3);width:34px;flex-shrink:0;text-align:right}
+
+.neg-list{list-style:none}
+.neg-item{display:flex;align-items:center;justify-content:space-between;
+  padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.neg-item:last-child{border-bottom:none}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;font-weight:500}
+.pill-wait{background:var(--amber-m);color:var(--amber)}
+.pill-view{background:var(--blue-m);color:var(--blue)}
+.pill-inv{background:var(--green-m);color:var(--green)}
+.pill-rej{background:var(--red-m);color:var(--red)}
+.neg-cnt{font-family:monospace;font-weight:600}
+.co-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px}
+.co-name{flex:0 0 160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t2)}
+.bar-track{flex:1;height:7px;background:var(--surf2);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:var(--blue);border-radius:3px;opacity:.7}
+.co-cnt{flex:0 0 24px;text-align:right;font-family:monospace;font-weight:600}
+
+/* ── History section ─────────────────────────────────── */
+.hist-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.hist-search{flex:1;min-width:180px}
+.hist-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)}
+.hist-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surf)}
+.hist-table th{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);padding:7px 12px 8px;border-bottom:2px solid var(--border);text-align:left;background:var(--surf2);white-space:nowrap}
+.hist-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tbody tr:hover td{background:var(--surf2);transition:background .08s}
+.hist-company{font-weight:600;color:var(--text)}
+.hist-vac{color:var(--t2);font-size:12px;margin-top:1px}
+.hist-date{font-family:"Cascadia Code","SF Mono",monospace;font-size:11.5px;color:var(--t3);white-space:nowrap}
+.hist-pager{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--t2);flex-wrap:wrap;gap:8px}
+
+/* ── Letters section (two-panel) ──────────────────────── */
+#s-letters.active{display:flex;overflow:hidden}
+.let-left{width:280px;flex-shrink:0;border-right:1px solid var(--border);
+  overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;
+  align-items:center;justify-content:flex-start}
+.let-left>.card{width:100%}
+.let-right{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.let-top{padding:14px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--surf)}
+.let-tpl-select{flex:1;max-width:220px}
+.let-actions{display:flex;gap:6px;margin-left:auto}
+.btn-sm{padding:5px 12px;border-radius:var(--r);font-size:12px;border:1px solid var(--border);
+  background:var(--surf2);color:var(--t2);transition:background .12s,color .12s}
+.btn-sm:hover{background:var(--blue-m);color:var(--blue);border-color:var(--blue)}
+.btn-sm.danger:hover{background:var(--red-m);color:var(--red);border-color:var(--red)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{filter:brightness(1.1)}
+.vars-bar{padding:8px 18px;border-bottom:1px solid var(--border);
+  display:flex;flex-wrap:wrap;gap:5px;background:var(--bg);flex-shrink:0}
+.var-chip{font-family:"Cascadia Code","SF Mono",monospace;font-size:11px;
+  background:var(--surf2);border:1px solid var(--border);border-radius:3px;
+  padding:2px 7px;color:var(--t2);cursor:default}
+.var-chip:hover{background:var(--blue-m);color:var(--blue);border-color:var(--blue)}
+/* Editor + preview panels */
+.let-panels{flex:1;display:flex;overflow:hidden}
+.let-editor-wrap{flex:1;padding:16px 20px;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.let-editor{flex:1;resize:none;min-height:200px;font-size:13px;line-height:1.7;
+  font-family:"Cascadia Code","SF Mono","Fira Code",monospace}
+.let-preview-wrap{flex:1;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.let-preview-hdr{padding:7px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--t3);background:var(--bg);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.let-preview-body{flex:1;overflow-y:auto;padding:16px 20px;font-size:13px;line-height:1.75;white-space:pre-wrap;color:var(--text)}
+
+/* ── Profile card in letters ──────────────────────────── */
+.profile-grid{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;padding-right:4px}
+
+/* ── Run section ─────────────────────────────────────── */
+.run-section{display:flex;flex-direction:column;height:100%;gap:12px}
+.run-controls{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.run-controls .btn-run-lg{padding:8px 22px;background:var(--blue);color:#fff;
+  border:none;border-radius:var(--r);font-size:13px;font-weight:600;
+  transition:filter .12s;white-space:nowrap}
+.run-controls .btn-run-lg:hover{filter:brightness(1.1)}
+.run-controls .btn-run-lg.running{background:var(--red)}
+.run-badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;
+  color:var(--t2);margin-left:auto}
+.log-terminal{background:#0D1117;color:#C9D1D9;padding:14px 16px;
+  font-family:"Cascadia Code","SF Mono",monospace;font-size:12px;line-height:1.7;
+  overflow-y:auto;flex:1;min-height:200px}
+.log-line-info{color:#8B949E}
+.log-line-ok{color:#3FB950}
+.log-line-warn{color:#D29922}
+.log-line-err{color:#F85149}
+.log-line-dry{color:#79C0FF}
+.log-line-sep{color:#484F58}
+.log-foot{padding:10px 14px;border-top:1px solid var(--border);
+  display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.btn-stop{padding:6px 14px;border-radius:var(--r);background:var(--red);color:#fff;
+  border:none;font-size:12.5px;transition:filter .12s}
+.btn-stop:hover{filter:brightness(1.1)}
+.btn-stop:disabled{opacity:.4;cursor:default;filter:none}
+
+/* ── Add template modal ──────────────────────────────── */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:200;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:var(--surf);border-radius:6px;width:340px;box-shadow:var(--sh2);padding:20px}
+.modal-title{font-weight:600;font-size:14px;margin-bottom:14px}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+
+/* ── Status bar ──────────────────────────────────────── */
+.statusbar{height:27px;border-top:1px solid var(--border);background:var(--surf);
+  display:flex;align-items:center;padding:0 16px;gap:20px;
+  font-size:11px;color:var(--t3);flex-shrink:0;overflow:hidden}
+.sb-part{display:flex;align-items:center;gap:5px}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.sb-dot.live{background:var(--green);box-shadow:0 0 5px var(--green)}
+
+/* ── Misc ─────────────────────────────────────────────── */
+hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:99px;font-size:11px;font-weight:500}
+.chip-blue{background:var(--blue-m);color:var(--blue)}
+.chip-green{background:var(--green-m);color:var(--green)}
+.chip-amber{background:var(--amber-m);color:var(--amber)}
+.chip-red{background:var(--red-m);color:var(--red)}
+.code-hint{font-family:"Cascadia Code","SF Mono",monospace;font-size:11.5px;
+  background:var(--surf2);padding:1px 6px;border-radius:3px}
+@media(max-width:760px){
+  .sidebar{display:none}.stat-grid{grid-template-columns:1fr 1fr}
+  .dash-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr!important}
+  .let-left{width:240px}.let-left{display:none}
+  .let-preview-wrap{display:none}
+}
+
+/* ── Info icon + tooltip ─────────────────────────────── */
+.lbl-row{display:flex;align-items:center;gap:5px}
+.info-icon{width:14px;height:14px;border-radius:50%;background:var(--surf2);
+  border:1px solid var(--border);color:var(--t3);font-size:9px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  cursor:default;line-height:1;transition:background .12s,color .12s,border-color .12s;
+  font-style:normal;user-select:none;-webkit-user-select:none}
+.info-icon:hover{background:var(--blue-m);color:var(--blue);border-color:var(--blue)}
+#g-tip{position:fixed;display:none;background:#1C2333;color:#DDE5F8;
+  border-radius:5px;padding:7px 10px;font-size:11.5px;line-height:1.6;
+  max-width:250px;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.35);
+  pointer-events:none;white-space:normal}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-icon"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 2h4v4H2V2zm6 0h4v4H8V2zM2 8h4v4H2V8zm6 0h4v4H8V8z"/></svg></div>
+    <div><div class="sb-name">AutoResponseHH</div><div class="sb-ver">v3.0 GUI</div></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-label">Обзор</div>
+    <div class="nav-item active" data-sec="dashboard"><span class="ico">◈</span>Сводка</div>
+    <div class="nav-item" data-sec="run"><span class="ico">▶</span>Запуск</div>
+    <div class="nav-item" data-sec="history"><span class="ico">☷</span>История</div>
+    <div class="nav-label">Настройки</div>
+    <div class="nav-item" data-sec="search"><span class="ico">⊕</span>Поиск</div>
+    <div class="nav-item" data-sec="bot"><span class="ico">◎</span>Бот</div>
+    <div class="nav-item" data-sec="resume"><span class="ico">▤</span>Резюме</div>
+    <div class="nav-item" data-sec="letters"><span class="ico">✉</span>Письма</div>
+    <div class="nav-item" data-sec="filters"><span class="ico">⊘</span>Фильтры</div>
+    <div class="nav-item" data-sec="schedule"><span class="ico">◷</span>Расписание</div>
+    <div class="nav-item" data-sec="account"><span class="ico">◯</span>Аккаунт</div>
+  </nav>
+  <div class="sb-bottom">
+    <button class="btn-run" onclick="runBot('run')">▶ Запустить</button>
+    <div class="run-row">
+      <button class="btn-ghost" onclick="runBot('dry-run')" title="Проверить без реальных откликов">Тест-запуск</button>
+      <button class="btn-ghost" onclick="runBot('check-status')" title="Обновить статусы откликов с HH.ru">Статусы</button>
+    </div>
+    <div class="save-badge" id="save-badge">✓ Сохранено</div>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main class="main">
+  <header class="topbar">
+    <span class="topbar-title" id="page-title">Сводка</span>
+    <div class="topbar-right">
+      <span class="topbar-db"><span class="dot"></span><span id="db-name">autoresponse.db</span></span>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Тема">◑</button>
+    </div>
+  </header>
+
+  <div class="content" id="content-area">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="section active" id="s-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-lbl">Откликов всего</div>
+          <div class="stat-val" id="st-total">—</div>
+          <div class="stat-sub">в базе</div>
+          <div class="stat-trend" id="st-trend-total"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">На ручной проверке</div>
+          <div class="stat-val c-amber" id="st-manual">—</div>
+          <div class="stat-sub">требуют внимания</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Приглашений</div>
+          <div class="stat-val c-green" id="st-invite">—</div>
+          <div class="stat-sub">получено</div>
+          <div class="stat-trend" id="st-trend-inv"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-lbl">Просмотрено</div>
+          <div class="stat-val c-blue" id="st-viewed">—</div>
+          <div class="stat-sub">работодателями</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">Воронка откликов</div>
+        <div id="funnel-wrap"><span style="color:var(--t3);font-size:12px">Загрузка...</span></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card"><div class="card-title">Активность за 7 дней</div><div class="chart-wrap"><canvas id="act-chart"></canvas></div></div>
+        <div class="card">
+          <div class="card-title">Статусы переговоров</div>
+          <ul class="neg-list" id="neg-list">
+            <li class="neg-item"><span class="pill pill-wait">ожидает ответа</span><span class="neg-cnt" id="neg-wait">0</span></li>
+            <li class="neg-item"><span class="pill pill-view">просмотрен</span><span class="neg-cnt" id="neg-view">0</span></li>
+            <li class="neg-item"><span class="pill pill-inv">приглашение</span><span class="neg-cnt" id="neg-inv">0</span></li>
+            <li class="neg-item"><span class="pill pill-rej">отказ</span><span class="neg-cnt" id="neg-rej">0</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="card-title">Топ компаний</div>
+        <div id="co-bars"></div>
+      </div>
+    </div>
+
+    <!-- ══ RUN ══ -->
+    <div class="section" id="s-run">
+      <div class="run-controls">
+        <button class="btn-run-lg" id="run-main-btn" onclick="runBot('run')">▶ Запустить бота</button>
+        <button class="btn-ghost" onclick="runBot('dry-run')" title="Проходит по вакансиям без реальных откликов">★ Тест-запуск</button>
+        <button class="btn-ghost" onclick="runBot('check-status')" title="Обновить статусы откликов с HH.ru">↻ Статусы</button>
+        <span class="run-badge" id="run-badge"></span>
+        <button class="btn-stop" id="log-stop-btn" style="margin-left:auto" disabled onclick="stopBot()">■ Остановить</button>
+      </div>
+      <div class="log-terminal" id="log-output" style="flex:1;min-height:0;border-radius:6px"></div>
+    </div>
+
+    <!-- ══ HISTORY ══ -->
+    <div class="section" id="s-history">
+      <div class="card" style="padding-bottom:12px">
+        <div class="card-title">История откликов</div>
+        <div class="hist-toolbar">
+          <input id="hist-search" class="form-input hist-search" type="search"
+            placeholder="Поиск по компании или вакансии..." oninput="debounceHistory()">
+          <select id="hist-status" class="form-input" style="width:170px" onchange="loadHistory()">
+            <option value="">Все статусы</option>
+            <option value="Ожидание">Ожидание</option>
+            <option value="Приглашение">Приглашение</option>
+            <option value="Собеседование">Собеседование</option>
+            <option value="Отказ">Отказ</option>
+            <option value="Выход на работу">Выход на работу</option>
+          </select>
+          <button class="btn-sm" onclick="exportCSV()">↓ Экспорт CSV</button>
+        </div>
+        <div class="hist-table-wrap">
+          <table class="hist-table">
+            <thead><tr>
+              <th>Компания / Вакансия</th>
+              <th>Дата</th>
+              <th>Запрос</th>
+              <th>Статус</th>
+            </tr></thead>
+            <tbody id="hist-body">
+              <tr><td colspan="4" style="text-align:center;color:var(--t3);padding:24px">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hist-pager">
+          <span id="hist-count">—</span>
+          <div style="display:flex;gap:5px">
+            <button class="btn-sm" id="hist-prev" onclick="histPage(-1)" disabled>← Назад</button>
+            <button class="btn-sm" id="hist-next" onclick="histPage(1)" disabled>Вперёд →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SEARCH ══ -->
+    <div class="section" id="s-search">
+      <div class="card">
+        <div class="card-title">Регион и охват</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Регион поиска</label>
+              <i class="info-icon" data-tip="Числовой код региона HH.ru. Популярные: 1 — Москва, 2 — Санкт-Петербург, 113 — вся Россия, 88 — Новосибирск. Чтобы найти код своего города, откройте любую вакансию в браузере и посмотрите параметр area= в URL.">ⓘ</i>
+            </div>
+            <input id="search-area" class="form-input" type="text" placeholder="113 = Россия, 1 = Москва" oninput="scheduleSave()">
+            <div class="form-hint">1 — Москва · 2 — СПб · 113 — Россия</div>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Страниц результатов на один запрос</label>
+              <i class="info-icon" data-tip="Каждая страница содержит около 20 вакансий. Например, 5 страниц × 4 запроса = до 400 вакансий на проверку. Большое значение увеличивает время работы.">ⓘ</i>
+            </div>
+            <input id="search-maxpages" class="form-input" type="number" min="1" max="999" oninput="scheduleSave()">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Поисковые запросы</div>
+        <div id="queries-cnt" class="tag-container" onclick="focusTagInput('q-in')">
+          <input id="q-in" class="tag-input" placeholder="+ запрос, Enter" onkeydown="onTagKey(event,'queries-cnt','q-in')">
+        </div>
+        <div class="form-hint" style="margin-top:5px">Нажмите Enter или запятую, чтобы добавить. Нажмите × — удалить.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Требуемый опыт работы</div>
+        <div class="check-group" id="experience-group">
+          <label class="check-item"><input type="checkbox" value="noExperience" onchange="scheduleSave()"> Без опыта</label>
+          <label class="check-item"><input type="checkbox" value="between1And3" onchange="scheduleSave()"> От 1 до 3 лет</label>
+          <label class="check-item"><input type="checkbox" value="between3And6" onchange="scheduleSave()"> От 3 до 6 лет</label>
+          <label class="check-item"><input type="checkbox" value="moreThan6" onchange="scheduleSave()"> Более 6 лет</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BOT ══ -->
+    <div class="section" id="s-bot">
+      <div class="card">
+        <div class="card-title">Лимиты откликов</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Максимум откликов за один запуск</label>
+              <i class="info-icon" data-tip="HH.ru разрешает не более 200 откликов в сутки на один аккаунт. Рекомендуется ставить 150–180, чтобы оставить запас. При превышении лимита HH.ru может временно заблокировать отклики.">ⓘ</i>
+            </div>
+            <div class="slider-row">
+              <input id="bot-maxrun" type="range" min="1" max="200" oninput="syncSlider(this,'bot-maxrun-val');scheduleSave()">
+              <span class="slider-val" id="bot-maxrun-val">150</span>
+            </div>
+            <div class="form-hint">Суточный лимит HH.ru — 200 откликов</div>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Лимит откликов на одну компанию</label>
+              <i class="info-icon" data-tip="Ограничивает количество вакансий, на которые бот откликается в рамках одной компании за сессию. Помогает избежать ситуации, когда на крупную компанию уходит всё время. 0 = без ограничений.">ⓘ</i>
+            </div>
+            <input id="bot-maxco" class="form-input" type="number" min="0" oninput="scheduleSave()">
+            <div class="form-hint">0 = без ограничений</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Паузы между действиями</div>
+        <div class="form-hint" style="margin-bottom:12px">
+          <i class="info-icon" data-tip="Случайные паузы имитируют поведение живого человека и снижают риск блокировки аккаунта HH.ru. Рекомендуемые значения: мин 1–2с, макс 3–5с. Слишком маленькие паузы могут привести к временной блокировке.">ⓘ</i>
+          Случайная задержка в указанном диапазоне имитирует поведение человека
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Минимальная пауза, сек</label>
+            <div class="slider-row">
+              <input id="bot-dmin" type="range" min="0.5" max="10" step="0.5" oninput="syncSlider(this,'bot-dmin-val');scheduleSave()">
+              <span class="slider-val" id="bot-dmin-val">1.5с</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Максимальная пауза, сек</label>
+            <div class="slider-row">
+              <input id="bot-dmax" type="range" min="0.5" max="15" step="0.5" oninput="syncSlider(this,'bot-dmax-val');scheduleSave()">
+              <span class="slider-val" id="bot-dmax-val">3.5с</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Пауза после отправки заявки, сек</label>
+              <i class="info-icon" data-tip="Время ожидания после закрытия диалогового окна подачи отклика, прежде чем перейти к следующей вакансии. Нужно, чтобы страница успела обновиться.">ⓘ</i>
+            </div>
+            <div class="slider-row">
+              <input id="bot-dmodal" type="range" min="0.1" max="5" step="0.1" oninput="syncSlider(this,'bot-dmodal-val');scheduleSave()">
+              <span class="slider-val" id="bot-dmodal-val">0.8с</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Сохранять прогресс каждые N откликов</label>
+              <i class="info-icon" data-tip="База данных сохраняется на диск каждые N откликов. При неожиданном завершении вы потеряете не более N последних откликов. Рекомендуется значение 1 (сохранять после каждого).">ⓘ</i>
+            </div>
+            <input id="bot-saven" class="form-input" type="number" min="1" oninput="scheduleSave()">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Фильтрация вакансий по дате</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Максимальный возраст вакансии, дней</label>
+              <i class="info-icon" data-tip="Пропускать вакансии, опубликованные более N дней назад. Помогает не тратить время на устаревшие объявления. 0 = не фильтровать по дате, откликаться на все.">ⓘ</i>
+            </div>
+            <input id="bot-fresh" class="form-input" type="number" min="0" oninput="scheduleSave()">
+            <div class="form-hint">0 = без ограничений по дате публикации</div>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Хранить историю откликов, дней</label>
+              <i class="info-icon" data-tip="Записи о поданных откликах хранятся в базе N дней. Бот не будет откликаться повторно на вакансии из этой истории. По истечении срока запись удаляется и бот снова может откликнуться.">ⓘ</i>
+            </div>
+            <input id="bot-expiry" class="form-input" type="number" min="1" oninput="scheduleSave()">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Интеллектуальная фильтрация</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-label">
+                Предварительная фильтрация через API HH.ru
+                <i class="info-icon" style="vertical-align:middle;margin-left:4px" data-tip="Запрашивает детальные данные о каждой вакансии через API HH.ru перед откликом. Позволяет точнее фильтровать (по зарплате, требованиям), но замедляет работу — на каждую вакансию делается дополнительный запрос.">ⓘ</i>
+              </div>
+              <div class="toggle-desc">Точный отбор по зарплате и параметрам, но медленнее</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="bot-apifilter" onchange="toggleApiFields();scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-label">Показывать оценку вакансий в логе</div>
+              <div class="toggle-desc">Выводить [скор:N] рядом с каждой вакансией (зарплата + свежесть)</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="bot-scoring" onchange="scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+          </div>
+          <div id="salary-field" class="form-group" style="opacity:.45;pointer-events:none;max-width:280px">
+            <div class="lbl-row">
+              <label class="form-label">Минимальная зарплата (чистыми), ₽</label>
+              <i class="info-icon" data-tip="Работает только при включённой предварительной фильтрации через API. Пропускать вакансии, где указанная зарплата ниже этого значения. 0 = не фильтровать по зарплате.">ⓘ</i>
+            </div>
+            <input id="bot-salmin" class="form-input" type="number" min="0" step="10000" placeholder="0 = не фильтровать" oninput="scheduleSave()">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Журналирование</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Сохранять лог откликов в CSV-файл</div>
+            <div class="toggle-desc">Создаёт файл response_log_ГГГГ-ММ-ДД.csv в папке проекта</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="bot-csv" onchange="scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESUME ══ -->
+    <div class="section" id="s-resume">
+      <div class="card">
+        <div class="card-title">Резюме по умолчанию</div>
+        <div class="form-grid g1">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Название резюме на HH.ru</label>
+              <i class="info-icon" data-tip="Достаточно указать часть названия вашего резюме — бот найдёт нужное по вхождению строки (регистр не важен). Например, если резюме называется «Automation QA Engineer», можно написать «QA» или «Automation».">ⓘ</i>
+            </div>
+            <input id="res-default" class="form-input" type="text" placeholder="Automation QA Engineer" oninput="scheduleSave()">
+            <div class="form-hint">Часть названия, регистр не важен — используется, когда не сработало ни одно правило ниже</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Выбор резюме по заголовку вакансии
+          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Если в заголовке вакансии найдено ключевое слово из левой колонки — бот отправит резюме, указанное в правой. Бот читает только заголовок, а не полный текст вакансии. Правила проверяются сверху вниз, используется первое совпадение. Регистр ключевых слов не важен.">ⓘ</i>
+        </div>
+        <table class="kv-table"><thead><tr><th>Ключевое слово в заголовке вакансии</th><th>Название резюме на HH.ru</th><th></th></tr></thead>
+          <tbody id="resume-match-body"></tbody>
+        </table>
+        <button class="btn-add-row" onclick="addTableRow('resume-match-body','keyword','resume','Ключевое слово','Имя резюме')">+ добавить правило</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Сопроводительные письма</div>
+        <div class="form-grid g1">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Папка с шаблонами писем</label>
+              <i class="info-icon" data-tip="Путь к папке, где хранятся файлы шаблонов (.txt). Относительный путь отсчитывается от корня проекта. По умолчанию это папка cover_letters/ рядом с main.py.">ⓘ</i>
+            </div>
+            <input id="res-cldir" class="form-input" type="text" oninput="scheduleSave()">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Выбор шаблона письма по заголовку вакансии
+          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Аналогично выбору резюме: если в заголовке вакансии найдено ключевое слово, будет отправлен соответствующий шаблон. Бот читает только заголовок, а не полный текст вакансии. Указывайте имя файла без расширения .txt. Если ни одно правило не совпало — письмо из раздела «Письма» → шаблон default.">ⓘ</i>
+        </div>
+        <table class="kv-table"><thead><tr><th>Ключевое слово в заголовке вакансии</th><th>Имя шаблона (без .txt)</th><th></th></tr></thead>
+          <tbody id="cl-match-body"></tbody>
+        </table>
+        <button class="btn-add-row" onclick="addTableRow('cl-match-body','keyword','template','Ключевое слово','Имя шаблона')">+ добавить правило</button>
+      </div>
+    </div>
+
+    <!-- ══ LETTERS ══ (two-panel) -->
+    <div class="section" id="s-letters">
+      <!-- Left: profile -->
+      <div class="let-left">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-title">
+            Профиль соискателя
+            <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Данные профиля автоматически подставляются в шаблон письма вместо переменных {name}, {position} и т.д. Заполните всё, что хотите видеть в письмах. Телефон и email скрыты — нажмите на иконку глаза.">ⓘ</i>
+          </div>
+          <div class="profile-grid">
+            <div class="form-group">
+              <label class="form-label">Ваше имя</label>
+              <input id="prof-name" class="form-input" type="text" placeholder="Дмитрий" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Желаемая должность</label>
+              <input id="prof-pos" class="form-input" type="text" placeholder="QA Automation Engineer" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Лет опыта</label>
+              <input id="prof-years" class="form-input" type="text" placeholder="3" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Город проживания</label>
+              <input id="prof-city" class="form-input" type="text" placeholder="Санкт-Петербург" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ключевые навыки</label>
+              <input id="prof-skills" class="form-input" type="text" placeholder="Python, Playwright, pytest" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Телефон</label>
+              <div class="eye-wrap">
+                <input id="prof-phone" class="form-input" type="password" placeholder="+7..." oninput="scheduleSave()">
+                <button class="eye-btn" onclick="toggleEye(this,'prof-phone')" tabindex="-1" title="Показать/скрыть"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Электронная почта</label>
+              <div class="eye-wrap">
+                <input id="prof-email" class="form-input" type="password" placeholder="your@mail.ru" oninput="scheduleSave()">
+                <button class="eye-btn" onclick="toggleEye(this,'prof-email')" tabindex="-1" title="Показать/скрыть"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Профиль GitHub</label>
+              <input id="prof-github" class="form-input" type="text" placeholder="https://github.com/username" oninput="scheduleSave();updatePreview()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Портфолио / личный сайт</label>
+              <input id="prof-portfolio" class="form-input" type="text" placeholder="https://..." oninput="scheduleSave();updatePreview()">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Right: editor + preview -->
+      <div class="let-right">
+        <div class="let-top">
+          <select id="let-tpl-sel" class="form-input let-tpl-select" onchange="switchTemplate(this.value)"></select>
+          <div class="let-actions">
+            <button class="btn-sm" onclick="openAddTplModal()">+ Новый</button>
+            <button class="btn-sm danger" id="btn-del-tpl" onclick="deleteTemplate()">Удалить</button>
+            <button class="btn-sm btn-primary" onclick="saveTemplate()">Сохранить</button>
+          </div>
+        </div>
+        <div class="vars-bar" title="Кликните чтобы вставить переменную в редактор">
+          <span class="var-chip" onclick="insertVar('{title}')">&#123;title&#125;</span>
+          <span class="var-chip" onclick="insertVar('{company}')">&#123;company&#125;</span>
+          <span class="var-chip" onclick="insertVar('{company_clause}')">&#123;company_clause&#125;</span>
+          <span class="var-chip" onclick="insertVar('{name}')">&#123;name&#125;</span>
+          <span class="var-chip" onclick="insertVar('{position}')">&#123;position&#125;</span>
+          <span class="var-chip" onclick="insertVar('{years}')">&#123;years&#125;</span>
+          <span class="var-chip" onclick="insertVar('{key_skills}')">&#123;key_skills&#125;</span>
+          <span class="var-chip" onclick="insertVar('{city}')">&#123;city&#125;</span>
+          <span class="var-chip" onclick="insertVar('{phone}')">&#123;phone&#125;</span>
+          <span class="var-chip" onclick="insertVar('{email}')">&#123;email&#125;</span>
+          <span class="var-chip" onclick="insertVar('{github}')">&#123;github&#125;</span>
+          <span class="var-chip" onclick="insertVar('{portfolio}')">&#123;portfolio&#125;</span>
+        </div>
+        <div class="let-panels">
+          <div class="let-editor-wrap">
+            <textarea id="let-editor" class="form-input let-editor" spellcheck="false"
+              placeholder="Текст письма... Используйте переменные из панели выше."
+              oninput="updatePreview()"></textarea>
+          </div>
+          <div class="let-preview-wrap">
+            <div class="let-preview-hdr">
+              <span>Превью рекрутёра</span>
+              <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none;letter-spacing:0">данные профиля подставлены</span>
+            </div>
+            <div class="let-preview-body" id="let-preview">Выберите шаблон для просмотра превью.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FILTERS ══ -->
+    <div class="section" id="s-filters">
+      <div class="card">
+        <div class="card-title">
+          Список исключённых компаний
+          <i class="info-icon" style="vertical-align:middle;margin-left:6px" data-tip="Вакансии компаний из этого списка будут пропускаться. Проверка по вхождению строки (регистр не важен): если название компании в вакансии содержит любое из указанных слов — вакансия пропускается.">ⓘ</i>
+        </div>
+        <div id="bl-cnt" class="tag-container" onclick="focusTagInput('bl-in')" style="min-height:60px">
+          <input id="bl-in" class="tag-input" placeholder="Название компании, Enter" onkeydown="onTagKey(event,'bl-cnt','bl-in')">
+        </div>
+        <div class="form-hint" style="margin-top:5px">Нажмите Enter, чтобы добавить. Нажмите × рядом с названием, чтобы удалить.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Текущие настройки фильтрации</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="filter-chips">
+          <span class="chip chip-blue">Предфильтрация: выкл</span>
+          <span class="chip chip-amber">Зарплата: не задана</span>
+          <span class="chip chip-green">Оценка вакансий: вкл</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SCHEDULE ══ -->
+    <div class="section" id="s-schedule">
+      <div class="card">
+        <div class="card-title">Автоподнятие резюме в поиске</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-label">
+                Поднимать резюме перед каждым запуском
+                <i class="info-icon" style="vertical-align:middle;margin-left:4px" data-tip="Перед началом отправки откликов бот автоматически поднимает ваше резюме в поиске HH.ru. Это увеличивает видимость профиля. HH.ru разрешает подъём не чаще 1 раза в 4 часа — бот соблюдает это ограничение.">ⓘ</i>
+              </div>
+              <div class="toggle-desc">Выполняется до начала отправки откликов</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="sched-raise" onchange="scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+          </div>
+          <div class="form-group" style="max-width:200px">
+            <div class="lbl-row">
+              <label class="form-label">Минимальный интервал между подъёмами, ч</label>
+              <i class="info-icon" data-tip="Бот поднимает резюме не чаще, чем раз в указанное количество часов. Устанавливайте не менее 4 — таково ограничение HH.ru. При попытке поднять чаще бот просто пропустит этот шаг.">ⓘ</i>
+            </div>
+            <input id="sched-interval" class="form-input" type="number" min="1" max="24" step="0.5" oninput="scheduleSave()">
+            <div class="form-hint">Не менее 4 часов — ограничение HH.ru</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Автоматический запуск по расписанию</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-label">Включить ежедневный автозапуск</div>
+              <div class="toggle-desc">Требует установленной библиотеки: <code class="code-hint">pip install schedule</code></div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="sched-daily" onchange="toggleDailyTime();scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+          </div>
+          <div id="daily-time-wrap" style="opacity:.45;transition:opacity .2s">
+            <div class="form-group" style="max-width:160px">
+              <label class="form-label">Время ежедневного запуска</label>
+              <input id="sched-time" class="form-input" type="time" value="08:00" oninput="scheduleSave()">
+            </div>
+          </div>
+          <div style="background:var(--surf2);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--t2)">
+            <strong style="color:var(--text)">Планировщик задач Windows</strong> — надёжнее встроенного расписания:<br>
+            <code class="code-hint" style="font-size:11px">schtasks /create /tn "AutoResponseHH" /tr "python main.py" /sc daily /st 08:00</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ACCOUNT ══ -->
+    <div class="section" id="s-account">
+      <div class="card">
+        <div class="card-title">Авторизация на HH.ru</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Логин или e-mail от аккаунта HH.ru</label>
+              <i class="info-icon" data-tip="Логин или адрес электронной почты, который вы используете для входа на hh.ru. Сохраняется локально в файле settings.json — никуда не отправляется.">ⓘ</i>
+            </div>
+            <div class="eye-wrap">
+              <input id="cred-login" class="form-input" type="password" placeholder="your@mail.ru" oninput="scheduleSave()">
+              <button class="eye-btn" onclick="toggleEye(this,'cred-login')" tabindex="-1" title="Показать/скрыть"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+            <div class="form-hint">Сохраняется локально в settings.json</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Пароль от аккаунта HH.ru</label>
+            <div class="eye-wrap">
+              <input id="cred-password" class="form-input" type="password" placeholder="••••••••" oninput="scheduleSave()">
+              <button class="eye-btn" onclick="toggleEye(this,'cred-password')" tabindex="-1" title="Показать/скрыть"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Настройки браузера</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Язык интерфейса браузера</label>
+              <i class="info-icon" data-tip="Определяет язык, который браузер сообщает сайтам через заголовок Accept-Language. Русский (ru-RU) рекомендуется — HH.ru лучше работает при русской локали.">ⓘ</i>
+            </div>
+            <select id="browser-locale" class="form-input" onchange="scheduleSave()">
+              <option value="ru-RU">Русский (ru-RU)</option>
+              <option value="en-US">Английский (en-US)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Часовой пояс браузера</label>
+              <i class="info-icon" data-tip="Часовой пояс, который браузер сообщает сайтам. Должен совпадать с вашим реальным часовым поясом, чтобы не вызывать подозрений у антибот-систем HH.ru.">ⓘ</i>
+            </div>
+            <select id="browser-tz" class="form-input" onchange="scheduleSave()">
+              <option value="Europe/Moscow">Москва (UTC+3)</option>
+              <option value="Europe/Kaliningrad">Калининград (UTC+2)</option>
+              <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
+              <option value="Asia/Novosibirsk">Новосибирск (UTC+7)</option>
+              <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-label">
+                Запускать браузер в видимом режиме
+                <i class="info-icon" style="vertical-align:middle;margin-left:4px" data-tip="Если включено, браузер открывается на экране (вы видите его работу). Если выключено — браузер работает в фоне (headless). Видимый режим рекомендуется: некоторые антибот-системы блокируют headless-браузеры.">ⓘ</i>
+              </div>
+              <div class="toggle-desc">Рекомендуется — снижает риск блокировки HH.ru</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="browser-headless" onchange="scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">База данных</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Файл базы данных (SQLite)</label>
+            <input class="form-input" type="text" value="autoresponse.db" readonly style="opacity:.6;cursor:default">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Состояние</label>
+            <div id="db-status" style="padding:7px 10px;background:var(--green-m);border-radius:var(--r);font-size:12.5px;color:var(--green)">Загрузка...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <!-- ── Status bar ──────────────────────────────────── -->
+  <div class="statusbar">
+    <span class="sb-part">
+      <span class="sb-dot" id="sb-dot"></span>
+      <span id="sb-status">Бездействие</span>
+    </span>
+    <span id="sb-applied"></span>
+    <span id="sb-section" style="margin-left:auto;font-size:10.5px"></span>
+  </div>
+</main>
+</div><!-- /layout -->
+
+
+<!-- ══ ADD TEMPLATE MODAL ══ -->
+<div id="g-tip"></div>
+<div class="modal" id="add-tpl-modal" onclick="modalClickOutside(event)">
+  <div class="modal-box">
+    <div class="modal-title">Новый шаблон</div>
+    <div class="form-group">
+      <label class="form-label">Название (латиница, без пробелов)</label>
+      <input id="new-tpl-name" class="form-input" type="text" placeholder="например: senior" maxlength="50">
+    </div>
+    <div class="modal-foot">
+      <button class="btn-sm" onclick="closeAddTplModal()">Отмена</button>
+      <button class="btn-sm btn-primary" onclick="confirmAddTemplate()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let _settings = {};
+let _coverLetters = {};
+let _activeTemplate = 'default';
+let _activeSec = 'dashboard';
+let _saveTimer = null;
+let _currentJobId = null;
+let _currentES = null;
+let _dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+let _histPage = 0, _histDebounce = null, _histTotal = 0;
+const HIST_PAGE_SIZE = 50;
+
+const SEC_TITLES = {
+  dashboard:'Сводка', run:'Запуск бота', history:'История откликов', search:'Поиск', bot:'Бот',
+  resume:'Резюме', letters:'Письма', filters:'Фильтры',
+  schedule:'Расписание', account:'Аккаунт'
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
+  initNav();
+  initTooltips();
+  await loadAll();
+  updateDashboard();
+});
+
+async function loadAll() {
+  try {
+    const [s, cl] = await Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch('/api/cover-letters').then(r => r.json()),
+    ]);
+    _settings = s;
+    _coverLetters = cl;
+    populateAll();
+    buildTemplateSelector();
+  } catch(e) {
+    console.error('loadAll failed:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════
+function initNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => switchSection(el.dataset.sec));
+  });
+}
+
+function switchSection(sec) {
+  _activeSec = sec;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.sec === sec));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('s-' + sec).classList.add('active');
+  const title = SEC_TITLES[sec] || sec;
+  document.getElementById('page-title').textContent = title;
+  const sbSec = document.getElementById('sb-section');
+  if (sbSec) sbSec.textContent = title;
+  if (sec === 'dashboard') setTimeout(drawChart, 60);
+  if (sec === 'history') loadHistory();
+  if (sec === 'letters') setTimeout(updatePreview, 50);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POPULATE
+// ═══════════════════════════════════════════════════════════════
+function populateAll() {
+  const s = _settings;
+  const c = s.credentials || {};
+  const p = s.profile || {};
+  const sr = s.search || {};
+  const b = s.bot || {};
+  const re = s.resume || {};
+  const f = s.filters || {};
+  const sc = s.schedule || {};
+  const br = s.browser || {};
+
+  setVal('cred-login', c.login || '');
+  setVal('cred-password', c.password || '');
+  setVal('browser-locale', br.locale || 'ru-RU');
+  setVal('browser-tz', br.timezone || 'Europe/Moscow');
+  setChecked('browser-headless', br.headless !== false);
+
+  setVal('prof-name', p.name || '');
+  setVal('prof-pos', p.position || '');
+  setVal('prof-years', p.years_experience || '');
+  setVal('prof-city', p.city || '');
+  setVal('prof-skills', p.key_skills || '');
+  setVal('prof-phone', p.phone || '');
+  setVal('prof-email', p.email || '');
+  setVal('prof-github', p.github || '');
+  setVal('prof-portfolio', p.portfolio || '');
+
+  setVal('search-area', sr.area || '113');
+  setVal('search-maxpages', sr.max_pages || 99);
+  renderTags('queries-cnt', 'q-in', sr.queries || []);
+  const expChecks = document.querySelectorAll('#experience-group input[type=checkbox]');
+  const expSelected = sr.experience || [];
+  expChecks.forEach(cb => { cb.checked = expSelected.includes(cb.value); });
+
+  setSlider('bot-maxrun', 'bot-maxrun-val', b.max_responses_per_run ?? 150, v => v);
+  setVal('bot-maxco', b.max_per_company ?? 5);
+  setSlider('bot-dmin', 'bot-dmin-val', b.delay_min ?? 1.5, v => v + 'с');
+  setSlider('bot-dmax', 'bot-dmax-val', b.delay_max ?? 3.5, v => v + 'с');
+  setSlider('bot-dmodal', 'bot-dmodal-val', b.delay_after_modal ?? 0.8, v => v + 'с');
+  setVal('bot-saven', b.save_every_n ?? 1);
+  setVal('bot-fresh', b.freshness_days ?? 14);
+  setVal('bot-expiry', b.applied_expiry_days ?? 30);
+  setChecked('bot-csv', b.log_responses_csv !== false);
+  setChecked('bot-apifilter', !!b.use_api_prefilter);
+  setChecked('bot-scoring', b.use_scoring !== false);
+  setVal('bot-salmin', b.salary_min || 0);
+  toggleApiFields();
+
+  setVal('res-default', re.default || '');
+  setVal('res-cldir', re.cover_letter_dir || 'cover_letters');
+  renderTable('resume-match-body', re.match || [], 'keyword', 'resume');
+  renderTable('cl-match-body', re.cover_letter_match || [], 'keyword', 'template');
+
+  renderTags('bl-cnt', 'bl-in', f.blacklist_companies || []);
+  updateFilterChips();
+
+  setChecked('sched-raise', sc.resume_raise_enabled !== false);
+  setVal('sched-interval', sc.resume_raise_interval ?? 4.0);
+  setChecked('sched-daily', !!sc.daily_run_enabled);
+  setVal('sched-time', sc.daily_run_time || '08:00');
+  toggleDailyTime();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLLECT SETTINGS
+// ═══════════════════════════════════════════════════════════════
+function collectSettings() {
+  return {
+    credentials: { login: val('cred-login'), password: val('cred-password') },
+    profile: {
+      name: val('prof-name'), position: val('prof-pos'),
+      years_experience: val('prof-years'), city: val('prof-city'),
+      key_skills: val('prof-skills'), phone: val('prof-phone'),
+      email: val('prof-email'), github: val('prof-github'),
+      portfolio: val('prof-portfolio'),
+    },
+    search: {
+      area: val('search-area'),
+      max_pages: parseInt(val('search-maxpages')) || 99,
+      queries: getTagList('queries-cnt'),
+      experience: getCheckedValues('#experience-group input[type=checkbox]'),
+    },
+    bot: {
+      max_responses_per_run: parseInt(val('bot-maxrun')) || 150,
+      max_per_company: parseInt(val('bot-maxco')) || 0,
+      delay_min: parseFloat(val('bot-dmin')) || 1.5,
+      delay_max: parseFloat(val('bot-dmax')) || 3.5,
+      delay_after_modal: parseFloat(val('bot-dmodal')) || 0.8,
+      save_every_n: parseInt(val('bot-saven')) || 1,
+      freshness_days: parseInt(val('bot-fresh')) || 0,
+      applied_expiry_days: parseInt(val('bot-expiry')) || 30,
+      log_responses_csv: checked('bot-csv'),
+      use_api_prefilter: checked('bot-apifilter'),
+      salary_min: parseInt(val('bot-salmin')) || 0,
+      use_scoring: checked('bot-scoring'),
+    },
+    resume: {
+      default: val('res-default'),
+      match: getTableRows('resume-match-body', 'keyword', 'resume'),
+      cover_letter_dir: val('res-cldir'),
+      cover_letter_match: getTableRows('cl-match-body', 'keyword', 'template'),
+    },
+    filters: { blacklist_companies: getTagList('bl-cnt') },
+    schedule: {
+      resume_raise_enabled: checked('sched-raise'),
+      resume_raise_interval: parseFloat(val('sched-interval')) || 4.0,
+      daily_run_enabled: checked('sched-daily'),
+      daily_run_time: val('sched-time'),
+    },
+    browser: {
+      locale: val('browser-locale'),
+      timezone: val('browser-tz'),
+      headless: checked('browser-headless'),
+    },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════════════════════════
+function scheduleSave() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(doSave, 700);
+}
+
+async function doSave() {
+  try {
+    const data = collectSettings();
+    await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    showBadge();
+    updateFilterChips();
+  } catch(e) { console.error('save failed', e); }
+}
+
+function showBadge() {
+  const b = document.getElementById('save-badge');
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 1800);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAG MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function renderTags(cntId, inputId, items) {
+  const cnt = document.getElementById(cntId);
+  cnt.querySelectorAll('.tag').forEach(t => t.remove());
+  const inp = document.getElementById(inputId);
+  items.forEach(txt => cnt.insertBefore(makeTag(txt, cntId), inp));
+}
+
+function makeTag(txt, cntId) {
+  const span = document.createElement('span');
+  span.className = 'tag';
+  span.textContent = txt;
+  const btn = document.createElement('button');
+  btn.className = 'tag-x';
+  btn.textContent = '×';
+  btn.onclick = e => { e.stopPropagation(); span.remove(); scheduleSave(); };
+  span.appendChild(btn);
+  return span;
+}
+
+function focusTagInput(id) { document.getElementById(id).focus(); }
+
+function onTagKey(e, cntId, inputId) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const inp = document.getElementById(inputId);
+  const v = inp.value.trim().replace(/,$/, '');
+  if (!v) return;
+  const cnt = document.getElementById(cntId);
+  cnt.insertBefore(makeTag(v, cntId), inp);
+  inp.value = '';
+  scheduleSave();
+}
+
+function getTagList(cntId) {
+  const cnt = document.getElementById(cntId);
+  if (!cnt) return [];
+  return Array.from(cnt.querySelectorAll('.tag')).map(t => t.childNodes[0].textContent.trim());
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TABLE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function renderTable(tbodyId, rows, k1, k2) {
+  const tb = document.getElementById(tbodyId);
+  if (!tb) return;
+  tb.innerHTML = '';
+  (rows || []).forEach(row => appendTableRow(tb, row[k1] || '', row[k2] || '', k1, k2));
+}
+
+function appendTableRow(tb, v1, v2, k1, k2) {
+  const tr = document.createElement('tr');
+  tr.dataset.k1 = k1;
+  tr.dataset.k2 = k2;
+  tr.innerHTML =
+    '<td><input class="form-input" style="width:100%" value="' + escAttr(v1) + '" oninput="scheduleSave()"></td>' +
+    '<td><input class="form-input" style="width:100%" value="' + escAttr(v2) + '" oninput="scheduleSave()"></td>' +
+    '<td class="td-del"><button class="btn-row-del" onclick="this.closest(\'tr\').remove();scheduleSave()">×</button></td>';
+  tb.appendChild(tr);
+}
+
+function addTableRow(tbodyId, k1, k2, ph1, ph2) {
+  const tb = document.getElementById(tbodyId);
+  if (!tb) return;
+  const tr = document.createElement('tr');
+  tr.dataset.k1 = k1; tr.dataset.k2 = k2;
+  tr.innerHTML =
+    '<td><input class="form-input" style="width:100%" placeholder="' + escAttr(ph1) + '" oninput="scheduleSave()"></td>' +
+    '<td><input class="form-input" style="width:100%" placeholder="' + escAttr(ph2) + '" oninput="scheduleSave()"></td>' +
+    '<td class="td-del"><button class="btn-row-del" onclick="this.closest(\'tr\').remove();scheduleSave()">×</button></td>';
+  tb.appendChild(tr);
+  tr.querySelectorAll('input')[0].focus();
+}
+
+function getTableRows(tbodyId, k1, k2) {
+  const tb = document.getElementById(tbodyId);
+  if (!tb) return [];
+  return Array.from(tb.querySelectorAll('tr')).map(tr => {
+    const ins = tr.querySelectorAll('input');
+    const r = {};
+    r[k1] = ins[0] ? ins[0].value.trim() : '';
+    r[k2] = ins[1] ? ins[1].value.trim() : '';
+    return r;
+  }).filter(r => r[k1]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COVER LETTERS
+// ═══════════════════════════════════════════════════════════════
+function buildTemplateSelector() {
+  const sel = document.getElementById('let-tpl-sel');
+  sel.innerHTML = '';
+  Object.keys(_coverLetters).sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name + '.txt';
+    sel.appendChild(opt);
+  });
+  if (_coverLetters['default']) { sel.value = 'default'; _activeTemplate = 'default'; }
+  else if (sel.options.length) { _activeTemplate = sel.options[0].value; }
+  loadTemplateContent(_activeTemplate);
+  document.getElementById('btn-del-tpl').disabled = _activeTemplate === 'default';
+}
+
+function switchTemplate(name) {
+  _activeTemplate = name;
+  loadTemplateContent(name);
+  document.getElementById('btn-del-tpl').disabled = name === 'default';
+}
+
+function loadTemplateContent(name) {
+  document.getElementById('let-editor').value = _coverLetters[name] || '';
+  updatePreview();
+}
+
+async function saveTemplate() {
+  const name = _activeTemplate;
+  const content = document.getElementById('let-editor').value;
+  _coverLetters[name] = content;
+  await fetch('/api/cover-letters/' + name, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ content })
+  });
+  showBadge();
+}
+
+async function deleteTemplate() {
+  if (_activeTemplate === 'default') return;
+  if (!confirm('Удалить шаблон "' + _activeTemplate + '"?')) return;
+  await fetch('/api/cover-letters/' + _activeTemplate, { method: 'DELETE' });
+  delete _coverLetters[_activeTemplate];
+  buildTemplateSelector();
+}
+
+function openAddTplModal() {
+  document.getElementById('new-tpl-name').value = '';
+  document.getElementById('add-tpl-modal').classList.add('open');
+  setTimeout(() => document.getElementById('new-tpl-name').focus(), 80);
+}
+
+function closeAddTplModal() { document.getElementById('add-tpl-modal').classList.remove('open'); }
+
+async function confirmAddTemplate() {
+  const raw = document.getElementById('new-tpl-name').value.trim();
+  const name = raw.replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (!name) return;
+  const content = '';
+  _coverLetters[name] = content;
+  await fetch('/api/cover-letters/' + name, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ content })
+  });
+  buildTemplateSelector();
+  document.getElementById('let-tpl-sel').value = name;
+  switchTemplate(name);
+  closeAddTplModal();
+}
+
+function insertVar(varStr) {
+  const ed = document.getElementById('let-editor');
+  const s = ed.selectionStart, e = ed.selectionEnd;
+  ed.value = ed.value.substring(0, s) + varStr + ed.value.substring(e);
+  ed.selectionStart = ed.selectionEnd = s + varStr.length;
+  ed.focus();
+  updatePreview();
+}
+
+function modalClickOutside(e) { if (e.target === document.getElementById('add-tpl-modal')) closeAddTplModal(); }
+
+// ═══════════════════════════════════════════════════════════════
+// PREVIEW
+// ═══════════════════════════════════════════════════════════════
+function updatePreview() {
+  const ed = document.getElementById('let-editor');
+  const preview = document.getElementById('let-preview');
+  if (!ed || !preview) return;
+  const tpl = ed.value;
+  if (!tpl.trim()) { preview.textContent = 'Шаблон пуст.'; return; }
+  const vars = {
+    title:       'QA Automation Engineer',
+    company:     'Яндекс',
+    company_clause: ' в компании Яндекс',
+    name:        val('prof-name')      || '[имя]',
+    position:    val('prof-pos')       || '[должность]',
+    years:       val('prof-years')     || '[опыт]',
+    city:        val('prof-city')      || '[город]',
+    key_skills:  val('prof-skills')    || '[навыки]',
+    phone:       '···',
+    email:       '···',
+    github:      val('prof-github')    || '[github]',
+    portfolio:   val('prof-portfolio') || '[portfolio]',
+  };
+  let result = tpl;
+  for (const [k, v] of Object.entries(vars)) {
+    result = result.replace(new RegExp('\\{' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\}', 'g'), v);
+  }
+  preview.textContent = result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RUN CONTROLS / SSE
+// ═══════════════════════════════════════════════════════════════
+async function runBot(mode) {
+  const login = val('cred-login');
+  const password = val('cred-password');
+  if (!login || !password) {
+    alert('Заполните логин и пароль в разделе «Аккаунт» перед запуском.');
+    switchSection('account');
+    return;
+  }
+
+  switchSection('run');
+  document.getElementById('log-output').innerHTML = '';
+  document.getElementById('log-stop-btn').disabled = false;
+  const mainBtn = document.getElementById('run-main-btn');
+  if (mainBtn) mainBtn.classList.add('running');
+  const badge = document.getElementById('run-badge');
+  const modeLabel = { run:'Бот запущен', 'dry-run':'Тест-запуск', 'check-status':'Проверка статусов' };
+  if (badge) { badge.innerHTML = '<span style="color:var(--green)">● </span>' + (modeLabel[mode] || mode); }
+  updateStatusBar(undefined, true);
+
+  try {
+    const r = await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode}) });
+    const data = await r.json();
+    if (!r.ok) { appendLog('Ошибка: ' + (data.error || r.status), 'err'); return; }
+    _currentJobId = data.job_id;
+    connectSSE(data.job_id);
+  } catch(e) {
+    appendLog('Ошибка запуска: ' + e, 'err');
+  }
+}
+
+function connectSSE(jobId) {
+  if (_currentES) { try { _currentES.close(); } catch(e) {} }
+  const es = new EventSource('/api/log/' + jobId);
+  _currentES = es;
+  es.onmessage = e => {
+    if (e.data === '[EOF]') {
+      es.close(); _currentES = null;
+      _botDone();
+      appendLog('─── Завершено ───', 'sep');
+      updateDashboard();
+      return;
+    }
+    appendLog(e.data, classifyLine(e.data));
+  };
+  es.onerror = () => {
+    es.close(); _currentES = null;
+    _botDone();
+  };
+}
+
+function _botDone() {
+  document.getElementById('log-stop-btn').disabled = true;
+  const mainBtn = document.getElementById('run-main-btn');
+  if (mainBtn) mainBtn.classList.remove('running');
+  const badge = document.getElementById('run-badge');
+  if (badge) badge.innerHTML = '';
+  updateStatusBar(undefined, false);
+}
+
+function appendLog(text, cls) {
+  const out = document.getElementById('log-output');
+  const div = document.createElement('div');
+  div.className = 'log-line-' + (cls || 'info');
+  div.textContent = text;
+  out.appendChild(div);
+  out.scrollTop = out.scrollHeight;
+}
+
+function classifyLine(text) {
+  if (/\[DRY-RUN\]|DRY.RUN/i.test(text)) return 'dry';
+  if (/WARNING/i.test(text)) return 'warn';
+  if (/ERROR/i.test(text)) return 'err';
+  if (/Отклик #/.test(text)) return 'ok';
+  if (/={10,}/.test(text)) return 'sep';
+  return 'info';
+}
+
+function stopBot() {
+  if (_currentES) { try { _currentES.close(); } catch(e) {} _currentES = null; }
+  if (_currentJobId) { fetch('/api/run/' + _currentJobId, {method:'DELETE'}); _currentJobId = null; }
+  _botDone();
+  appendLog('─── Остановлено ───', 'sep');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+async function updateDashboard() {
+  try {
+    const d = await fetch('/api/db/stats').then(r => r.json());
+    const applied = d.applied_count ?? 0;
+    document.getElementById('st-total').textContent = applied;
+    document.getElementById('st-manual').textContent = d.manual_count ?? 0;
+    const neg = d.negotiations || {};
+    document.getElementById('neg-wait').textContent = neg['Ожидание'] || neg['ожидает ответа'] || 0;
+    document.getElementById('neg-view').textContent = neg['просмотрен'] || neg['Просмотрен'] || 0;
+    document.getElementById('neg-inv').textContent  = neg['Приглашение'] || neg['приглашение'] || 0;
+    document.getElementById('neg-rej').textContent  = neg['Отказ'] || neg['отказ'] || 0;
+    document.getElementById('st-invite').textContent = neg['Приглашение'] || neg['приглашение'] || 0;
+    document.getElementById('st-viewed').textContent = neg['просмотрен'] || neg['Просмотрен'] || 0;
+
+    const weekly = d.weekly_activity || [0,0,0,0,0,0,0];
+    drawChart(weekly);
+    updateTrend('st-trend-total', weekly);
+    renderCoBars(d.top_companies || []);
+    renderFunnel(applied, neg);
+    renderDbStatus(d);
+    updateStatusBar(applied, false);
+  } catch(e) { console.error('dashboard error', e); }
+}
+
+function renderFunnel(applied, neg) {
+  const wrap = document.getElementById('funnel-wrap');
+  if (!wrap) return;
+  const awaiting  = neg['Ожидание']    || neg['ожидает ответа'] || 0;
+  const invited   = neg['Приглашение'] || neg['приглашение']    || 0;
+  const interview = neg['Собеседование']  || 0;
+  const hired     = neg['Выход на работу'] || 0;
+  const rejected  = neg['Отказ']       || neg['отказ']          || 0;
+  const viewed    = neg['просмотрен']  || neg['Просмотрен']      || 0;
+  const anyNeg    = awaiting + invited + interview + hired + rejected + viewed;
+  const responded = invited + interview + hired + rejected;
+  const positive  = invited + interview + hired;
+  const levels = [
+    { label:'Подано',           n:applied,   color:'var(--blue)' },
+    { label:'На рассмотрении',  n:anyNeg,    color:'#60A5FA'     },
+    { label:'Ответили',         n:responded, color:'var(--amber)'},
+    { label:'Приглашение +',    n:positive,  color:'var(--green)'},
+  ];
+  const max = applied || 1;
+  wrap.innerHTML = levels.map(l => {
+    const w = max > 0 ? Math.round(l.n / max * 100) : 0;
+    return `<div class="funnel-row">
+      <span class="funnel-lbl">${escHtml(l.label)}</span>
+      <div class="funnel-bar-wrap"><div class="funnel-bar" style="width:${w}%;background:${l.color}"></div></div>
+      <span class="funnel-n">${l.n}</span>
+      <span class="funnel-pct">${w}%</span>
+    </div>`;
+  }).join('');
+}
+
+function updateTrend(elId, weekData) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const total7 = (weekData || []).reduce((a, b) => a + b, 0);
+  if (!total7) { el.innerHTML = ''; return; }
+  const early  = (weekData[0]||0) + (weekData[1]||0) + (weekData[2]||0);
+  const recent = (weekData[4]||0) + (weekData[5]||0) + (weekData[6]||0);
+  const cls = recent > early ? 'trend-up' : recent < early ? 'trend-dn' : 'trend-neu';
+  const arr = recent > early ? '↑' : recent < early ? '↓' : '=';
+  el.innerHTML = `<span class="${cls}">${arr} ${total7} за 7 дней</span>`;
+}
+
+function renderCoBars(companies) {
+  const wrap = document.getElementById('co-bars');
+  wrap.innerHTML = '';
+  if (!companies.length) { wrap.textContent = 'Нет данных'; return; }
+  const max = companies[0].count || 1;
+  companies.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'co-row';
+    row.innerHTML =
+      '<span class="co-name" title="' + escAttr(c.name) + '">' + escHtml(c.name) + '</span>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + Math.round(c.count / max * 100) + '%"></div></div>' +
+      '<span class="co-cnt">' + c.count + '</span>';
+    wrap.appendChild(row);
+  });
+}
+
+function renderDbStatus(d) {
+  const el = document.getElementById('db-status');
+  if (el) {
+    const n = d.applied_count || 0;
+    el.textContent = n + ' откликов · ' + (d.manual_count || 0) + ' на проверке · 4 таблицы';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════
+const STATUS_PILL_CLS = {
+  'Приглашение':'pill-inv','Собеседование':'pill-inv','Выход на работу':'pill-inv',
+  'Ожидание':'pill-wait','Отказ':'pill-rej',
+  'просмотрен':'pill-view','Просмотрен':'pill-view',
+};
+
+function debounceHistory() {
+  clearTimeout(_histDebounce);
+  _histPage = 0;
+  _histDebounce = setTimeout(loadHistory, 400);
+}
+
+function histPage(dir) {
+  const maxPage = Math.max(0, Math.ceil(_histTotal / HIST_PAGE_SIZE) - 1);
+  _histPage = Math.max(0, Math.min(_histPage + dir, maxPage));
+  loadHistory();
+}
+
+async function loadHistory() {
+  const search = val('hist-search');
+  const status = val('hist-status');
+  const url = `/api/history?limit=${HIST_PAGE_SIZE}&offset=${_histPage * HIST_PAGE_SIZE}` +
+    (search ? '&search=' + encodeURIComponent(search) : '') +
+    (status ? '&status=' + encodeURIComponent(status) : '');
+  try {
+    const d = await fetch(url).then(r => r.json());
+    _histTotal = d.total || 0;
+    renderHistory(d.rows || []);
+  } catch(e) { console.error('loadHistory failed', e); }
+}
+
+function renderHistory(rows) {
+  const tbody = document.getElementById('hist-body');
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:24px">Нет данных</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(r => {
+      const d = r.applied_at ? r.applied_at.substring(0, 10) : '—';
+      const cls = STATUS_PILL_CLS[r.status] || 'pill-wait';
+      return `<tr>
+        <td>
+          <div class="hist-company">${escHtml(r.company || '—')}</div>
+          <div class="hist-vac">${escHtml(r.title || '—')}</div>
+        </td>
+        <td class="hist-date">${escHtml(d)}</td>
+        <td style="font-size:12px;color:var(--t3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.query || '—')}</td>
+        <td><span class="pill ${cls}">${escHtml(r.status || 'Ожидание')}</span></td>
+      </tr>`;
+    }).join('');
+  }
+  const pages = Math.max(1, Math.ceil(_histTotal / HIST_PAGE_SIZE));
+  document.getElementById('hist-count').textContent =
+    `${_histTotal} записей · стр. ${_histPage + 1} / ${pages}`;
+  const prev = document.getElementById('hist-prev');
+  const next = document.getElementById('hist-next');
+  if (prev) prev.disabled = _histPage <= 0;
+  if (next) next.disabled = _histPage >= pages - 1;
+}
+
+function exportCSV() {
+  window.open('/api/export', '_blank');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS BAR
+// ═══════════════════════════════════════════════════════════════
+function updateStatusBar(applied, running) {
+  const dot = document.getElementById('sb-dot');
+  const st  = document.getElementById('sb-status');
+  const ap  = document.getElementById('sb-applied');
+  if (dot) dot.className = 'sb-dot' + (running ? ' live' : '');
+  if (st)  st.textContent = running ? 'Запущен' : 'Бездействие';
+  if (ap && applied !== undefined) ap.textContent = applied + ' откликов в базе';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHART
+// ═══════════════════════════════════════════════════════════════
+let _chartData = [0,0,0,0,0,0,0];
+
+function drawChart(data) {
+  if (data) _chartData = data;
+  const c = document.getElementById('act-chart');
+  if (!c) return;
+  const w = c.parentElement.offsetWidth, h = 145;
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const isDark = document.documentElement.dataset.theme === 'dark' ||
+    (!document.documentElement.dataset.theme && _dark);
+  const blueClr = isDark ? '#4A79EF' : '#1952C4';
+  const gridClr = isDark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)';
+  const textClr = isDark ? '#7D8EAF' : '#9BAABF';
+  const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const d = _chartData;
+  const max = Math.max(...d, 1);
+  const pad = {t:10, b:26, l:4, r:4};
+  const bw = Math.floor((w - pad.l - pad.r) / d.length);
+  const gap = Math.max(4, Math.floor(bw * .2));
+  ctx.clearRect(0, 0, w, h);
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (h - pad.t - pad.b) * i / 4;
+    ctx.beginPath(); ctx.strokeStyle = gridClr; ctx.lineWidth = 1;
+    ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+  }
+  d.forEach((v, i) => {
+    const bH = (v / max) * (h - pad.t - pad.b);
+    const x = pad.l + i * bw + gap / 2;
+    const bW = bw - gap;
+    const y = h - pad.b - bH;
+    ctx.fillStyle = blueClr;
+    ctx.globalAlpha = v > 0 ? .75 : .18;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, bW, bH, 2);
+    else { ctx.rect(x, y, bW, bH); }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = textClr;
+    ctx.font = '10px system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(days[i], x + bW / 2, h - 6);
+    if (v > 0) {
+      ctx.fillStyle = blueClr;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText(v, x + bW / 2, y - 3);
+    }
+  });
+}
+
+window.addEventListener('resize', () => { if (_activeSec === 'dashboard') drawChart(); });
+
+// ═══════════════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════════════
+function initTheme() {
+  const stored = localStorage.getItem('theme');
+  if (stored) { _dark = stored === 'dark'; }
+  applyTheme();
+}
+
+function toggleTheme() {
+  _dark = !_dark;
+  localStorage.setItem('theme', _dark ? 'dark' : 'light');
+  applyTheme();
+  setTimeout(drawChart, 50);
+}
+
+function applyTheme() {
+  document.documentElement.dataset.theme = _dark ? 'dark' : 'light';
+  document.getElementById('theme-btn').textContent = _dark ? '○' : '◑';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EYE TOGGLE
+// ═══════════════════════════════════════════════════════════════
+function toggleEye(btn, fieldId) {
+  const f = document.getElementById(fieldId);
+  const show = f.type === 'password';
+  f.type = show ? 'text' : 'password';
+  const use = btn.querySelector('svg path');
+  if (use) {
+    if (show) {
+      btn.querySelector('svg').innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+      btn.querySelector('svg').innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SLIDER SYNC
+// ═══════════════════════════════════════════════════════════════
+function syncSlider(el, valId) {
+  const v = el.value;
+  const lbl = document.getElementById(valId);
+  if (lbl) lbl.textContent = v + (valId.includes('dmin') || valId.includes('dmax') || valId.includes('dmodal') ? 'с' : '');
+}
+
+function setSlider(elId, valId, val, fmtFn) {
+  const el = document.getElementById(elId);
+  if (el) { el.value = val; }
+  const lbl = document.getElementById(valId);
+  if (lbl) lbl.textContent = fmtFn(val);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONDITIONAL FIELDS
+// ═══════════════════════════════════════════════════════════════
+function toggleApiFields() {
+  const on = checked('bot-apifilter');
+  const f = document.getElementById('salary-field');
+  f.style.opacity = on ? 1 : .45;
+  f.style.pointerEvents = on ? 'all' : 'none';
+}
+
+function toggleDailyTime() {
+  const on = checked('sched-daily');
+  const w = document.getElementById('daily-time-wrap');
+  w.style.opacity = on ? 1 : .45;
+  w.style.pointerEvents = on ? 'all' : 'none';
+}
+
+function updateFilterChips() {
+  const el = document.getElementById('filter-chips');
+  if (!el) return;
+  const apiOn = checked('bot-apifilter');
+  const sal = parseInt(val('bot-salmin')) || 0;
+  const scoring = checked('bot-scoring');
+  el.innerHTML =
+    '<span class="chip ' + (apiOn ? 'chip-green' : 'chip-blue') + '">Предфильтрация через API: ' + (apiOn ? 'вкл' : 'выкл') + '</span>' +
+    '<span class="chip ' + (sal > 0 ? 'chip-green' : 'chip-amber') + '">Мин. зарплата: ' + (sal > 0 ? sal.toLocaleString() + ' ₽' : 'не задана') + '</span>' +
+    '<span class="chip ' + (scoring ? 'chip-green' : 'chip-blue') + '">Оценка вакансий: ' + (scoring ? 'вкл' : 'выкл') + '</span>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function checked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+function setChecked(id, v) { const el = document.getElementById(id); if (el) el.checked = !!v; }
+function getCheckedValues(sel) { return Array.from(document.querySelectorAll(sel)).filter(el => el.checked).map(el => el.value); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ═══════════════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════════════
+function initTooltips() {
+  const tip = document.getElementById('g-tip');
+  if (!tip) return;
+  document.querySelectorAll('.info-icon[data-tip]').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      tip.textContent = el.dataset.tip;
+      tip.style.display = 'block';
+      _positionTip(e, tip);
+    });
+    el.addEventListener('mousemove', e => _positionTip(e, tip));
+    el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+function _positionTip(e, tip) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + 14, y = e.clientY - 6;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  const r = tip.getBoundingClientRect();
+  if (r.right > vw - 8) tip.style.left = (e.clientX - r.width - 10) + 'px';
+  if (r.bottom > vh - 8) tip.style.top = (e.clientY - r.height - 6) + 'px';
+}
+</script>
+</body>
+</html>
