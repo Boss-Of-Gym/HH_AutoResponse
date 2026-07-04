@@ -507,21 +507,21 @@ class AutoResponsePage(BasePage):
 
         # ── DEBUG: структура дропдауна ──────────────────────────────────────
         try:
-            logger.debug("[DBG modal-html]\n" + self.locator.modal_window.inner_html()[:5000])
+            logger.info("[DBG modal-html]\n" + self.locator.modal_window.inner_html()[:5000])
         except Exception as _ex:
-            logger.debug(f"[DBG modal-html error] {_ex}")
+            logger.info(f"[DBG modal-html error] {_ex}")
 
         resume_titles = self.page.locator("[data-qa='resume-title']")
         cells = self.page.locator("[data-qa='cell']")
         n_rt = resume_titles.count()
-        logger.debug(f"[DBG] resume-title={n_rt}  cell={cells.count()}")
+        logger.info(f"[DBG] resume-title={n_rt}  cell={cells.count()}")
         for i in range(min(n_rt, 6)):
             el = resume_titles.nth(i)
             try:
                 vis = el.is_visible()
                 txt = el.inner_text().strip().replace("\n", " ")[:60] if vis else "(hidden)"
                 p_qa = el.evaluate("e => e.parentElement?.getAttribute('data-qa') ?? '-'")
-                logger.debug(f"  [rt#{i}] vis={vis} parent-qa='{p_qa}' txt='{txt}'")
+                logger.info(f"  [rt#{i}] vis={vis} parent-qa='{p_qa}' txt='{txt}'")
             except Exception:
                 pass
         # ── end DEBUG ──────────────────────────────────────────────────────
@@ -530,23 +530,23 @@ class AutoResponsePage(BasePage):
         # как в trigger-поле, так и в опции списка (одинаковый текст, два [data-qa='cell'])
         resume_loc = self.locator.resume_option(selected_name)
         cnt = resume_loc.count()
-        logger.debug(f"[DBG] resume_option('{selected_name}') matches={cnt}")
+        logger.info(f"[DBG] resume_option('{selected_name}') matches={cnt}")
         if cnt > 0 and resume_loc.first.is_visible():
             resume_loc.first.click()
-            logger.debug(f"  Выбрано резюме: '{selected_name}'")
+            logger.info(f"  Выбрано резюме: '{selected_name}'")
         else:
             # Fallback: первый [data-qa='cell'] в модале (cell — родитель resume-title, не наоборот)
             first_cell = cells.first
             if first_cell.is_visible():
                 first_cell.click()
-                logger.debug("  Fallback: клик по первому [data-qa='cell']")
+                logger.info("  Fallback: клик по первому [data-qa='cell']")
 
         time.sleep(0.2)
         if self.locator.modal_window_button_response.is_visible():
             return
 
         # Дропдаун не закрылся. Три стратегии закрытия:
-        logger.debug("[DBG] dropdown open after resume select — trying to close")
+        logger.info("[DBG] dropdown open after resume select — trying to close")
 
         # Стратегия 1: resume-title.first (отображаемое поле дропменю, trigger)
         first_rt = resume_titles.first
@@ -554,13 +554,13 @@ class AutoResponsePage(BasePage):
             try:
                 txt = first_rt.inner_text().strip().replace("\n", " ")[:60]
                 p_qa = first_rt.evaluate("e => e.parentElement?.getAttribute('data-qa') ?? '-'")
-                logger.debug(f"[DBG] s1: click resume-title.first parent-qa='{p_qa}' txt='{txt}'")
+                logger.info(f"[DBG] s1: click resume-title.first parent-qa='{p_qa}' txt='{txt}'")
             except Exception:
                 pass
             first_rt.click()
             time.sleep(0.3)
             if self.locator.modal_window_button_response.is_visible():
-                logger.debug("  dropdown closed via s1 (resume-title.first)")
+                logger.info("  dropdown closed via s1 (resume-title.first)")
                 return
 
         # Стратегия 2: родительский контейнер trigger-поля (wrapper с обработчиком toggle)
@@ -568,10 +568,10 @@ class AutoResponsePage(BasePage):
             first_rt.locator("xpath=..").click()
             time.sleep(0.3)
             if self.locator.modal_window_button_response.is_visible():
-                logger.debug("  dropdown closed via s2 (parent of resume-title.first)")
+                logger.info("  dropdown closed via s2 (parent of resume-title.first)")
                 return
         except Exception as _ex:
-            logger.debug(f"[DBG] s2 parent click failed: {_ex}")
+            logger.info(f"[DBG] s2 parent click failed: {_ex}")
 
         # Стратегия 3: заголовок модалки (нейтральная зона вне дропдауна)
         heading = self.locator.heading_response_on_vacancie
@@ -579,7 +579,7 @@ class AutoResponsePage(BasePage):
             heading.click()
             time.sleep(0.2)
             if self.locator.modal_window_button_response.is_visible():
-                logger.debug("  dropdown closed via s3 (modal heading)")
+                logger.info("  dropdown closed via s3 (modal heading)")
                 return
 
         # Все стратегии не сработали — сохраняем скриншот для диагностики
