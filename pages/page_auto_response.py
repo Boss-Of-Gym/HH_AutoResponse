@@ -274,14 +274,17 @@ class AutoResponsePage(BasePage):
                                         self.locator.modal_close_button.click()
                                     time.sleep(0.3)
                                 else:
-                                    # Guard: если дропдаун не закрылся — не ждём 10с таймаута
-                                    if not self.locator.modal_window_button_response.is_visible():
-                                        logger.warning(f"  Кнопка «Откликнуться» не видна после выбора резюме — пропускаем '{title}'")
+                                    btn_submit = self.locator.modal_window_button_response
+                                    try:
+                                        btn_submit.scroll_into_view_if_needed(timeout=2000)
+                                        btn_submit.wait_for(state="visible", timeout=3000)
+                                    except PlaywrightTimeoutError:
+                                        logger.warning(f"  Кнопка «Откликнуться» не стала видна — пропускаем '{title}'")
                                         if self.locator.modal_close_button.is_visible():
                                             self.locator.modal_close_button.click()
                                         skip_count += 1
                                         continue
-                                    self.click(self.locator.modal_window_button_response)
+                                    self.click(btn_submit)
                                     time.sleep(0.5)
 
                                     # Лимит как ответ сервера на клик submit
