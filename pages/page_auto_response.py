@@ -275,16 +275,28 @@ class AutoResponsePage(BasePage):
                                     time.sleep(0.3)
                                 else:
                                     btn_submit = self.locator.modal_window_button_response
-                                    try:
-                                        btn_submit.scroll_into_view_if_needed(timeout=2000)
-                                        btn_submit.wait_for(state="visible", timeout=3000)
-                                    except PlaywrightTimeoutError:
-                                        logger.warning(f"  Кнопка «Откликнуться» не стала видна — пропускаем '{title}'")
+                                    if btn_submit.count() == 0:
+                                        logger.warning(f"  Кнопка «Откликнуться» отсутствует в DOM — пропускаем '{title}'")
                                         if self.locator.modal_close_button.is_visible():
                                             self.locator.modal_close_button.click()
                                         skip_count += 1
                                         continue
-                                    self.click(btn_submit)
+                                    # Прокручиваем модал к кнопке (после заполнения письма она уходит вниз)
+                                    try:
+                                        btn_submit.scroll_into_view_if_needed(timeout=2000)
+                                        time.sleep(0.2)
+                                    except Exception:
+                                        pass
+                                    # locator.click() сам делает scrollIntoView перед кликом
+                                    try:
+                                        btn_submit.click(timeout=8000)
+                                        logger.info(f"[BasePage] Клик по элементу: {btn_submit}")
+                                    except PlaywrightTimeoutError:
+                                        logger.warning(f"  Таймаут клика «Откликнуться» — пропускаем '{title}'")
+                                        if self.locator.modal_close_button.is_visible():
+                                            self.locator.modal_close_button.click()
+                                        skip_count += 1
+                                        continue
                                     time.sleep(0.5)
 
                                     # Лимит как ответ сервера на клик submit
