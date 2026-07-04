@@ -1,2 +1,4 @@
 playwright==1.58.0
 python-dotenv==1.2.1
+flask==3.0.3
+pywebview>=5.0
