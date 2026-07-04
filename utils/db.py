@@ -54,6 +54,10 @@ def init_db() -> None:
                 first_seen    TEXT DEFAULT '',
                 last_checked  TEXT DEFAULT ''
             );
+            CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT DEFAULT ''
+            );
         """)
     _migrate_legacy()
 
@@ -294,6 +298,29 @@ def get_history(limit: int = 50, offset: int = 0, search: str = '', status_filte
                 (like, like, limit, offset),
             ).fetchall()
     return [dict(row) for row in rows]
+
+
+def save_limit_reached(reached_at: datetime) -> None:
+    """Сохраняет время достижения лимита HH.ru (200 откликов/24ч)."""
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('limit_reached_at', ?)",
+            (reached_at.isoformat(timespec="seconds"),),
+        )
+
+
+def get_limit_reached_at() -> "datetime | None":
+    """Возвращает время последнего достижения лимита или None."""
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT value FROM settings WHERE key = 'limit_reached_at'"
+            ).fetchone()
+        if row and row["value"]:
+            return datetime.fromisoformat(row["value"])
+    except Exception:
+        pass
+    return None
 
 
 def get_history_count(search: str = '', status_filter: str = '') -> int:

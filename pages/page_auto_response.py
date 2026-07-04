@@ -704,6 +704,7 @@ class AutoResponsePage(BasePage):
         self, applied: dict, manual_review: set, query_stats: dict,
         total_count: int, started_at: datetime, company_counts: dict
     ) -> None:
+        db.save_limit_reached(datetime.now())
         self._save_applied(applied)
         self._save_manual_review(manual_review)
         self._log_final_stats(query_stats, total_count, started_at, company_counts)

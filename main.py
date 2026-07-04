@@ -32,6 +32,28 @@ _RETRY_DELAY = 30
 
 
 def run(dry_run: bool = False) -> None:
+    from datetime import timedelta
+    from utils import db as _db_check
+    _db_check.init_db()
+
+    # Проверяем лимит HH.ru до запуска браузера
+    if not dry_run:
+        limit_at = _db_check.get_limit_reached_at()
+        if limit_at:
+            elapsed = datetime.now() - limit_at
+            if elapsed < timedelta(hours=24):
+                remaining = timedelta(hours=24) - elapsed
+                hours = int(remaining.total_seconds() // 3600)
+                minutes = int((remaining.total_seconds() % 3600) // 60)
+                sep = "=" * 55
+                logger.warning(sep)
+                logger.warning("  ЛИМИТ ОТКЛИКОВ HH.RU ИСЧЕРПАН")
+                logger.warning(f"  Лимит был достигнут: {limit_at.strftime('%Y-%m-%d %H:%M')}")
+                logger.warning(f"  Следующий запуск возможен через: {hours}ч {minutes}мин")
+                logger.warning("  В течение 24 часов не более 200 откликов.")
+                logger.warning(sep)
+                return
+
     logger.info("=" * 55)
     logger.info("  AutoResponseHH запущен")
     if dry_run:
