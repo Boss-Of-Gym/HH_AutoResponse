@@ -497,7 +497,15 @@ class AutoResponsePage(BasePage):
         return True
 
     def _select_resume_in_modal(self, vacancy_title: str) -> None:
-        """п.19: выбирает резюме в дропдауне по типу вакансии"""
+        """п.19: выбирает резюме в дропдауне по типу вакансии.
+
+        Два состояния дропдауна (подтверждено из DOM):
+        - ЗАКРЫТ: trigger-карточка (div[role='button']) со встроенным [data-qa='cell']
+                  показывает текущий выбор. [data-qa='drop-base'] НЕ виден.
+                  Клик по ней ОТКРЫВАЕТ список — НЕ подтверждает выбор!
+        - ОТКРЫТ: [data-qa='drop-base'] listbox виден поверх модалки,
+                  перекрывает кнопки. Клик по trigger-карточке ЗАКРЫВАЕТ список.
+        """
         title_lower = (vacancy_title or "").lower()
         selected_name = config.ResumeConfig.DEFAULT
         for keyword, resume_name in config.ResumeConfig.MATCH:
@@ -505,94 +513,58 @@ class AutoResponsePage(BasePage):
                 selected_name = resume_name
                 break
 
-        # ── DEBUG: структура дропдауна ──────────────────────────────────────
-        try:
-            logger.info("[DBG modal-html]\n" + self.locator.modal_window.inner_html()[:5000])
-        except Exception as _ex:
-            logger.info(f"[DBG modal-html error] {_ex}")
+        drop_base = self.locator.modal_drop_base
+        trigger   = self.locator.modal_resume_trigger
 
-        resume_titles = self.page.locator("[data-qa='resume-title']")
-        cells = self.page.locator("[data-qa='cell']")
-        n_rt = resume_titles.count()
-        logger.info(f"[DBG] resume-title={n_rt}  cell={cells.count()}")
-        for i in range(min(n_rt, 6)):
-            el = resume_titles.nth(i)
+        if not drop_base.is_visible():
+            # ── Дропдаун ЗАКРЫТ ─────────────────────────────────────────
+            # Trigger-карточка показывает уже выбранное резюме.
+            # Проверяем нужно ли переключаться.
             try:
-                vis = el.is_visible()
-                txt = el.inner_text().strip().replace("\n", " ")[:60] if vis else "(hidden)"
-                p_qa = el.evaluate("e => e.parentElement?.getAttribute('data-qa') ?? '-'")
-                logger.info(f"  [rt#{i}] vis={vis} parent-qa='{p_qa}' txt='{txt}'")
+                current_text = self.locator.modal_window_drop_base.inner_text().strip()
             except Exception:
-                pass
-        # ── end DEBUG ──────────────────────────────────────────────────────
+                current_text = ""
+            logger.info(f"  Дропдаун закрыт, показано: '{current_text}'")
 
-        # .first — защита от strict-mode violation когда один resume-name встречается
-        # как в trigger-поле, так и в опции списка (одинаковый текст, два [data-qa='cell'])
-        resume_loc = self.locator.resume_option(selected_name)
-        cnt = resume_loc.count()
-        logger.info(f"[DBG] resume_option('{selected_name}') matches={cnt}")
-        if cnt > 0 and resume_loc.first.is_visible():
-            resume_loc.first.click()
-            logger.info(f"  Выбрано резюме: '{selected_name}'")
-        else:
-            # Fallback: первый [data-qa='cell'] в модале (cell — родитель resume-title, не наоборот)
-            first_cell = cells.first
-            if first_cell.is_visible():
-                first_cell.click()
-                logger.info("  Fallback: клик по первому [data-qa='cell']")
+            if selected_name.lower() in current_text.lower() or not current_text:
+                # Уже выбрано нужное резюме — ничего не делаем, кнопка уже видна
+                logger.info(f"  Резюме '{selected_name}' уже выбрано")
+                return
 
-        time.sleep(0.2)
+            # Нужно другое резюме — открываем список кликом по trigger-карточке
+            logger.info(f"  Нужно '{selected_name}', открываем дропдаун")
+            if trigger.is_visible():
+                trigger.click()
+                time.sleep(0.3)
+
+        # ── Дропдаун ОТКРЫТ — выбираем нужный вариант ───────────────────
+        if drop_base.is_visible():
+            option = self.locator.resume_option_in_drop(selected_name)
+            cnt = option.count()
+            logger.info(f"  Вариантов '{selected_name}' в drop-base: {cnt}")
+            if cnt > 0 and option.first.is_visible():
+                option.first.click()
+                logger.info(f"  Выбрано резюме: '{selected_name}'")
+            else:
+                # Fallback: первая опция в открытом списке
+                first_opt = self.page.locator("[data-qa='drop-base'] [data-qa='cell']").first
+                if first_opt.is_visible():
+                    first_opt.click()
+                    logger.info("  Fallback: выбрана первая опция из drop-base")
+            time.sleep(0.2)
+
         if self.locator.modal_window_button_response.is_visible():
             return
 
-        # Дропдаун не закрылся. Три стратегии закрытия:
-        logger.info("[DBG] dropdown open after resume select — trying to close")
-
-        # Стратегия 1: resume-title.first (отображаемое поле дропменю, trigger)
-        first_rt = resume_titles.first
-        if first_rt.is_visible():
-            try:
-                txt = first_rt.inner_text().strip().replace("\n", " ")[:60]
-                p_qa = first_rt.evaluate("e => e.parentElement?.getAttribute('data-qa') ?? '-'")
-                logger.info(f"[DBG] s1: click resume-title.first parent-qa='{p_qa}' txt='{txt}'")
-            except Exception:
-                pass
-            first_rt.click()
-            time.sleep(0.3)
-            if self.locator.modal_window_button_response.is_visible():
-                logger.info("  dropdown closed via s1 (resume-title.first)")
-                return
-
-        # Стратегия 2: родительский контейнер trigger-поля (wrapper с обработчиком toggle)
-        try:
-            first_rt.locator("xpath=..").click()
-            time.sleep(0.3)
-            if self.locator.modal_window_button_response.is_visible():
-                logger.info("  dropdown closed via s2 (parent of resume-title.first)")
-                return
-        except Exception as _ex:
-            logger.info(f"[DBG] s2 parent click failed: {_ex}")
-
-        # Стратегия 3: заголовок модалки (нейтральная зона вне дропдауна)
-        heading = self.locator.heading_response_on_vacancie
-        if heading.is_visible():
-            heading.click()
+        # Дропдаун не закрылся после выбора опции (уже была выбрана) —
+        # кликаем по trigger-карточке чтобы убрать drop-base overlay
+        if drop_base.is_visible() and trigger.is_visible():
+            trigger.click()
+            logger.info("  Закрыли дропдаун кликом по trigger-карточке")
             time.sleep(0.2)
-            if self.locator.modal_window_button_response.is_visible():
-                logger.info("  dropdown closed via s3 (modal heading)")
-                return
 
-        # Все стратегии не сработали — сохраняем скриншот для диагностики
-        logger.warning("[DBG] dropdown STILL open after all strategies")
-        try:
-            from pathlib import Path as _Path
-            dbg_dir = _Path.cwd() / "debug_screenshots"
-            dbg_dir.mkdir(exist_ok=True)
-            scr = dbg_dir / "dropdown_stuck.png"
-            self.page.screenshot(path=str(scr))
-            logger.warning(f"  screenshot saved: {scr}")
-        except Exception:
-            pass
+        if not self.locator.modal_window_button_response.is_visible():
+            logger.warning("  Кнопка «Откликнуться» не видна после работы с дропдауном")
 
     def _get_cover_letter_for(self, title: str) -> str:
         """п.3: выбирает шаблон письма по ключевым словам в заголовке вакансии."""

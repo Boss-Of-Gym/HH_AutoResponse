@@ -77,22 +77,36 @@ class AutoResponse:
 
     @property
     def modal_window_drop_base(self):
-        # Индикатор наличия выбора резюме в модале (data-qa подтверждён из DOM)
+        # [data-qa='resume-title'] виден когда дропдаун есть (закрыт или открыт)
         return self.page.locator("[data-qa='resume-title']")
 
-    def resume_option(self, name: str):
-        """Локатор опции резюме по имени. Структура DOM (подтверждено):
-        [data-qa='cell'] > [data-qa='resume-title'] > [data-qa='cell-text-content'] = название
+    @property
+    def modal_drop_base(self):
+        """Открытый listbox дропдауна; виден ТОЛЬКО когда список развёрнут."""
+        return self.page.locator("[data-qa='drop-base']")
+
+    @property
+    def modal_resume_trigger(self):
+        """Trigger-карточка (role=button) — кликаем чтобы открыть / закрыть список.
+        Подтверждено из DOM: div[role='button'] > [data-qa='cell'] > [data-qa='resume-title']
+        """
+        return self.page.locator("div[role='button']").filter(
+            has=self.page.locator("[data-qa='cell'] [data-qa='resume-title']")
+        )
+
+    def resume_option_in_drop(self, name: str):
+        """Опция по имени внутри открытого [data-qa='drop-base'].
+        Структура: [data-qa='drop-base'] [data-qa='cell'] [data-qa='cell-text-content'] = название
         """
         return (
-            self.page.locator("[data-qa='cell']")
-            .filter(has=self.page.locator("[data-qa='resume-title']", has_text=name))
+            self.page.locator("[data-qa='drop-base'] [data-qa='cell']")
+            .filter(has=self.page.locator("[data-qa='cell-text-content']", has_text=name))
         )
 
     @property
     def modal_window_drop_base_resume_auto(self):
         """Резюме по умолчанию из конфига — не хардкод"""
-        return self.resume_option(config.ResumeConfig.DEFAULT)
+        return self.resume_option_in_drop(config.ResumeConfig.DEFAULT)
 
     @property
     def modal_window_button_response(self):
