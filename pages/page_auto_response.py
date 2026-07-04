@@ -509,6 +509,16 @@ class AutoResponsePage(BasePage):
             if first_opt.is_visible():
                 self.click(first_opt)
 
+        # Если кнопка «Откликнуться» не появилась — дропдаун всё ещё открыт
+        # (резюме было уже выбрано, повторный клик по нему ничего не закрыл).
+        # Кликаем по заголовку модалки, чтобы скрыть список и открыть кнопку.
+        time.sleep(0.2)
+        if not self.locator.modal_window_button_response.is_visible():
+            heading = self.locator.heading_response_on_vacancie
+            if heading.is_visible():
+                heading.click()
+                logger.debug("  Дропдаун не закрылся после выбора резюме — клик по заголовку для скрытия")
+
     def _get_cover_letter_for(self, title: str) -> str:
         """п.3: выбирает шаблон письма по ключевым словам в заголовке вакансии."""
         title_lower = (title or "").lower()
