@@ -158,7 +158,7 @@ def check_status() -> None:
 
     with Stealth().use_sync(sync_playwright()) as playwright:
         browser = playwright.chromium.launch(
-            headless=config.Browser.HEADLESS,
+            headless=True,
             args=["--start-maximized"],
             channel="chrome",
         )
