@@ -285,36 +285,26 @@ class AutoResponsePage(BasePage):
                                             self.locator.modal_close_button.click()
                                         skip_count += 1
                                         continue
-                                    # Скроллим scrollable-контейнер модала через JS —
-                                    # Playwright scroll_into_view не пробивается через overflow:hidden родителей
+                                    # Модал без скрола (overflow:hidden) — кнопка есть в DOM но обрезана.
+                                    # JS-клик обходит все проверки видимости Playwright.
+                                    clicked = False
                                     try:
-                                        self.page.evaluate("""
-                                            () => {
-                                                const btn = document.querySelector('[data-qa="vacancy-response-submit-popup"]');
-                                                if (!btn) return;
-                                                let el = btn.parentElement;
-                                                while (el && el !== document.body) {
-                                                    const ov = getComputedStyle(el).overflowY;
-                                                    if (ov === 'auto' || ov === 'scroll') {
-                                                        el.scrollTop = el.scrollHeight;
-                                                        return;
-                                                    }
-                                                    el = el.parentElement;
-                                                }
-                                            }
-                                        """)
-                                        time.sleep(0.3)
-                                    except Exception:
-                                        pass
-                                    try:
-                                        btn_submit.click(timeout=8000)
-                                        logger.info(f"[BasePage] Клик по элементу: {btn_submit}")
-                                    except PlaywrightTimeoutError:
-                                        logger.warning(f"  Таймаут клика «Откликнуться» — пропускаем '{title}'")
-                                        if self.locator.modal_close_button.is_visible():
-                                            self.locator.modal_close_button.click()
-                                        skip_count += 1
-                                        continue
+                                        btn_submit.evaluate("el => el.click()")
+                                        logger.info(f"  JS-клик «Откликнуться» — '{title}'")
+                                        clicked = True
+                                    except Exception as e:
+                                        logger.warning(f"  JS-клик не сработал: {e}")
+                                    if not clicked:
+                                        try:
+                                            btn_submit.click(force=True, timeout=8000)
+                                            logger.info(f"  force-клик «Откликнуться» — '{title}'")
+                                            clicked = True
+                                        except Exception as e:
+                                            logger.warning(f"  Таймаут клика «Откликнуться» — пропускаем '{title}'")
+                                            if self.locator.modal_close_button.is_visible():
+                                                self.locator.modal_close_button.click()
+                                            skip_count += 1
+                                            continue
                                     time.sleep(0.5)
 
                                     # Лимит как ответ сервера на клик submit
