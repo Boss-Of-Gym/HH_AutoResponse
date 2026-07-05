@@ -87,6 +87,10 @@ button{cursor:pointer}
 .save-badge{display:none;font-size:10.5px;color:var(--green);text-align:center;
   margin-top:6px;font-weight:500}
 .save-badge.show{display:block}
+.threads-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.threads-row label{font-size:11px;color:var(--t2);white-space:nowrap}
+.threads-slider{flex:1;accent-color:var(--red);cursor:pointer;height:3px}
+.threads-val{font-size:12px;font-weight:700;color:var(--text);min-width:18px;text-align:right}
 
 /* ── Main ────────────────────────────────────────────── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -377,6 +381,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="nav-item" data-sec="account"><span class="ico">◯</span>Аккаунт</div>
   </nav>
   <div class="sb-bottom">
+    <div class="threads-row" title="Количество параллельных потоков — каждый обрабатывает свои поисковые запросы одновременно">
+      <label for="sb-threads">Потоков:</label>
+      <input type="range" id="sb-threads" class="threads-slider" min="1" max="8" value="1"
+        oninput="syncThreads(this,'sb')">
+      <span class="threads-val" id="sb-threads-val">1</span>
+    </div>
     <button class="btn-run" onclick="runBot('run')">▶ Запустить</button>
     <div class="run-row">
       <button class="btn-ghost" onclick="runBot('dry-run')" title="Проверить без реальных откликов">Тест-запуск</button>
@@ -454,6 +464,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
         <button class="btn-run-lg" id="run-main-btn" onclick="runBot('run')">▶ Запустить бота</button>
         <button class="btn-ghost" onclick="runBot('dry-run')" title="Проходит по вакансиям без реальных откликов">★ Тест-запуск</button>
         <button class="btn-ghost" onclick="runBot('check-status')" title="Обновить статусы откликов с HH.ru">↻ Статусы</button>
+        <div class="threads-row" style="margin:0 8px" title="Параллельных потоков — каждый поток обрабатывает свои поисковые запросы независимо">
+          <label for="main-threads" style="font-size:11px;color:var(--t2)">Потоков:</label>
+          <input type="range" id="main-threads" class="threads-slider" min="1" max="8" value="1"
+            style="width:80px" oninput="syncThreads(this,'main')">
+          <span class="threads-val" id="main-threads-val">1</span>
+        </div>
         <span class="run-badge" id="run-badge"></span>
         <button class="btn-stop" id="log-stop-btn" style="margin-left:auto" disabled onclick="stopBot()">■ Остановить</button>
       </div>
@@ -1023,6 +1039,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTooltips();
   await loadAll();
   updateDashboard();
+  runBot('check-status');
 });
 
 async function loadAll() {
@@ -1410,6 +1427,16 @@ function updatePreview() {
 // ═══════════════════════════════════════════════════════════════
 // RUN CONTROLS / SSE
 // ═══════════════════════════════════════════════════════════════
+function syncThreads(slider, src) {
+  const v = slider.value;
+  if (src !== 'sb') { const s = document.getElementById('sb-threads'); if (s) { s.value = v; document.getElementById('sb-threads-val').textContent = v; } }
+  if (src !== 'main') { const s = document.getElementById('main-threads'); if (s) { s.value = v; document.getElementById('main-threads-val').textContent = v; } }
+  document.getElementById(src === 'sb' ? 'sb-threads-val' : 'main-threads-val').textContent = v;
+}
+function getThreads() {
+  return parseInt(document.getElementById('sb-threads')?.value || '1', 10);
+}
+
 async function runBot(mode) {
   const login = val('cred-login');
   const password = val('cred-password');
@@ -1419,6 +1446,7 @@ async function runBot(mode) {
     return;
   }
 
+  const threads = getThreads();
   switchSection('run');
   document.getElementById('log-output').innerHTML = '';
   document.getElementById('log-stop-btn').disabled = false;
@@ -1426,11 +1454,12 @@ async function runBot(mode) {
   if (mainBtn) mainBtn.classList.add('running');
   const badge = document.getElementById('run-badge');
   const modeLabel = { run:'Бот запущен', 'dry-run':'Тест-запуск', 'check-status':'Проверка статусов' };
-  if (badge) { badge.innerHTML = '<span style="color:var(--green)">● </span>' + (modeLabel[mode] || mode); }
+  const threadSuffix = threads > 1 ? ` (${threads} потока)` : '';
+  if (badge) { badge.innerHTML = '<span style="color:var(--green)">● </span>' + (modeLabel[mode] || mode) + threadSuffix; }
   updateStatusBar(undefined, true);
 
   try {
-    const r = await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode}) });
+    const r = await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode, threads}) });
     const data = await r.json();
     if (!r.ok) { appendLog('Ошибка: ' + (data.error || r.status), 'err'); return; }
     _currentJobId = data.job_id;
