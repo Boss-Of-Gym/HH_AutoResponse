@@ -16,10 +16,11 @@ _LEGACY_MANUAL = "manual_review.json"
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=5)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")   # не блокирует читателей при записи
-    conn.execute("PRAGMA synchronous=NORMAL") # баланс надёжность/скорость
+    conn.execute("PRAGMA journal_mode=WAL")    # не блокирует читателей при записи
+    conn.execute("PRAGMA synchronous=NORMAL")  # баланс надёжность/скорость
+    conn.execute("PRAGMA busy_timeout=5000")   # ждём 5с при конкурентной записи
     return conn
 
 
@@ -298,6 +299,20 @@ def get_history(limit: int = 50, offset: int = 0, search: str = '', status_filte
                 (like, like, limit, offset),
             ).fetchall()
     return [dict(row) for row in rows]
+
+
+def is_already_applied(url: str) -> bool:
+    """Проверяет БД напрямую — для корректной дедупликации при параллельных воркерах."""
+    if not url:
+        return False
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM applied_vacancies WHERE url = ? LIMIT 1", (url,)
+            ).fetchone()
+        return row is not None
+    except Exception:
+        return False
 
 
 def save_limit_reached(reached_at: datetime) -> None:

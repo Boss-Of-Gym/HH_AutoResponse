@@ -52,7 +52,9 @@ class AutoResponsePage(BasePage):
             names = ", ".join(self._cover_letters.keys())
             logger.info(f"Шаблоны писем загружены: {names}")
 
-    def auto_response(self, dry_run: bool = False) -> None:
+    def auto_response(self, dry_run: bool = False, queries=None, worker_id: int = 0) -> None:
+        if queries is None:
+            queries = config.SearchConfig.QUERIES
         if dry_run:
             logger.info("★ DRY-RUN режим: отклики НЕ отправляются")
 
@@ -70,7 +72,7 @@ class AutoResponsePage(BasePage):
         if config.BotConfig.USE_API_PREFILTER:
             api_map = self._fetch_api_map()
 
-        for query in config.SearchConfig.QUERIES:
+        for query in queries:
             stats = {"responses": 0, "skipped_applied": 0, "skipped_fresh": 0,
                      "skipped_company": 0, "skipped_prefilter": 0,
                      "manual_review": 0, "errors": 0, "redirects": 0}
@@ -142,8 +144,10 @@ class AutoResponsePage(BasePage):
                         vacancy_url = self._get_vacancy_url(btn)
                         title, company, date_text = self._get_vacancy_info(btn)
 
-                        # п.18: межзапросная дедупликация (applied — dict с URL-ключами)
-                        if vacancy_url and vacancy_url in applied:
+                        # п.18: дедупликация — память (быстро) + БД (межпроцессная защита)
+                        if vacancy_url and (
+                            vacancy_url in applied or db.is_already_applied(vacancy_url)
+                        ):
                             logger.debug(f"  Пропуск (уже откликались): {vacancy_url}")
                             stats["skipped_applied"] += 1
                             skip_count += 1

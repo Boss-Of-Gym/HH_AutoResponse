@@ -31,7 +31,7 @@ _MAX_RETRIES = 3
 _RETRY_DELAY = 30
 
 
-def run(dry_run: bool = False) -> None:
+def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
     from datetime import timedelta
     from utils import db as _db_check
     _db_check.init_db()
@@ -54,11 +54,24 @@ def run(dry_run: bool = False) -> None:
                 logger.warning(sep)
                 return
 
+    # Распределяем запросы между воркерами
+    all_queries = config.SearchConfig.QUERIES
+    if workers > 1:
+        queries = [q for i, q in enumerate(all_queries) if i % workers == worker_id]
+        if not queries:
+            logger.info(f"Воркер {worker_id+1}/{workers}: нет запросов для обработки, завершаем.")
+            return
+    else:
+        queries = all_queries
+
+    w_prefix = f"[Воркер {worker_id+1}/{workers}] " if workers > 1 else ""
     logger.info("=" * 55)
-    logger.info("  AutoResponseHH запущен")
+    logger.info(f"  {w_prefix}AutoResponseHH запущен")
     if dry_run:
         logger.info("  ★ РЕЖИМ DRY-RUN: отклики не отправляются")
-    logger.info(f"  Запросов: {len(config.SearchConfig.QUERIES)}")
+    if workers > 1:
+        logger.info(f"  Поток {worker_id+1} из {workers}")
+    logger.info(f"  Запросов: {len(queries)} {queries}")
     logger.info(f"  Регион: {config.SearchConfig.AREA} | Страниц: {config.SearchConfig.MAX_PAGES}")
     logger.info(f"  Лимит сессии: {config.BotConfig.MAX_RESPONSES_PER_RUN} откликов")
     logger.info(f"  Задержка: {config.BotConfig.DELAY_MIN}-{config.BotConfig.DELAY_MAX}с")
@@ -117,7 +130,7 @@ def run(dry_run: bool = False) -> None:
                     logger.warning(f"Не удалось поднять резюме: {e}")
 
             auto_response = AutoResponsePage(page)
-            auto_response.auto_response(dry_run=dry_run)
+            auto_response.auto_response(dry_run=dry_run, queries=queries, worker_id=worker_id)
 
         except KeyboardInterrupt:
             logger.warning("Прерывание пользователем (Ctrl+C). Сохраняем состояние...")
@@ -245,6 +258,19 @@ def main() -> None:
         metavar="PORT",
         help="Порт для GUI (по умолчанию 5555)",
     )
+    parser.add_argument(
+        "--worker-id",
+        type=int,
+        default=0,
+        dest="worker_id",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args()
 
     if args.check_status:
@@ -252,7 +278,7 @@ def main() -> None:
     elif args.run_at:
         _run_scheduler(args.run_at)
     elif args.run or args.dry_run:
-        run(dry_run=args.dry_run)
+        run(dry_run=args.dry_run, worker_id=args.worker_id, workers=args.workers)
     else:
         # По умолчанию — GUI (python main.py или python main.py --gui)
         from gui.app import run_gui

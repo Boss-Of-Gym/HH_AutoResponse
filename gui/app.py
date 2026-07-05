@@ -1,8 +1,10 @@
 """Flask GUI server for AutoResponseHH. Entry point: python main.py --gui"""
 import json
 import os
+import queue as _queue
 import subprocess
 import sys
+import threading
 import uuid
 from pathlib import Path
 
@@ -21,7 +23,8 @@ app = Flask(__name__, static_folder=str(Path(__file__).parent / "static"), stati
 SETTINGS_FILE = ROOT / "settings.json"
 COVER_LETTERS_DIR = ROOT / "cover_letters"
 
-_active_jobs: dict[str, subprocess.Popen] = {}
+# {job_id: {'procs': [Popen, ...], 'n_workers': int}}
+_active_jobs: dict[str, dict] = {}
 
 
 # ── Defaults / load / save ───────────────────────────────────────────────────
@@ -242,25 +245,31 @@ def api_export():
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
-    # Защита от двойного запуска: завершаем зомби-процессы, проверяем живые
-    dead = [jid for jid, p in _active_jobs.items() if p.poll() is not None]
+    # Завершаем зомби-процессы, проверяем живые
+    dead = [jid for jid, job in _active_jobs.items()
+            if all(p.poll() is not None for p in job['procs'])]
     for jid in dead:
         _active_jobs.pop(jid, None)
     if _active_jobs:
         return jsonify({"error": "Бот уже запущен", "running": list(_active_jobs.keys())}), 409
 
-    mode = (request.get_json(force=True) or {}).get("mode", "run")
+    data = request.get_json(force=True) or {}
+    mode = data.get("mode", "run")
+    n_workers = max(1, min(int(data.get("threads", 1)), 8))
+    if mode == "check-status":
+        n_workers = 1  # статусы всегда в один поток
+
     if getattr(sys, "frozen", False):
-        # в exe-сборке main.py не существует — запускаем сам exe с флагами
-        cmd = [sys.executable]
+        base_cmd = [sys.executable]
     else:
-        cmd = [_find_python(), str(ROOT / "main.py")]
+        base_cmd = [_find_python(), str(ROOT / "main.py")]
+
     if mode == "dry-run":
-        cmd.append("--dry-run")
+        flag = "--dry-run"
     elif mode == "check-status":
-        cmd.append("--check-status")
+        flag = "--check-status"
     else:
-        cmd.append("--run")
+        flag = "--run"
 
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
@@ -268,30 +277,65 @@ def api_run():
     env["PYTHONUNBUFFERED"] = "1"
 
     job_id = uuid.uuid4().hex[:8]
-    proc = subprocess.Popen(
-        cmd, cwd=str(ROOT),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace", bufsize=1,
-        env=env,
-        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
-    )
-    _active_jobs[job_id] = proc
+    procs = []
+    for i in range(n_workers):
+        cmd = base_cmd + [flag, f"--worker-id={i}", f"--workers={n_workers}"]
+        proc = subprocess.Popen(
+            cmd, cwd=str(ROOT),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, encoding="utf-8", errors="replace", bufsize=1,
+            env=env,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        procs.append(proc)
+
+    _active_jobs[job_id] = {'procs': procs, 'n_workers': n_workers}
     return jsonify({"job_id": job_id})
 
 
 @app.route("/api/log/<job_id>")
 def api_log_stream(job_id: str):
     def _stream():
-        proc = _active_jobs.get(job_id)
-        if proc is None:
+        job = _active_jobs.get(job_id)
+        if job is None:
             yield "data: [job not found]\n\n"
             return
-        try:
-            for line in proc.stdout:
-                clean = line.rstrip().replace("\n", " ")
-                yield f"data: {clean}\n\n"
-        except Exception:
-            pass
+
+        procs = job['procs']
+        n = job['n_workers']
+
+        if n == 1:
+            try:
+                for line in procs[0].stdout:
+                    yield f"data: {line.rstrip()}\n\n"
+            except Exception:
+                pass
+        else:
+            q = _queue.Queue()
+
+            def _reader(proc, wid):
+                try:
+                    for line in proc.stdout:
+                        q.put((wid, line.rstrip()))
+                except Exception:
+                    pass
+                finally:
+                    q.put((wid, None))
+
+            for i, p in enumerate(procs):
+                threading.Thread(target=_reader, args=(p, i), daemon=True).start()
+
+            done = 0
+            while done < n:
+                try:
+                    wid, line = q.get(timeout=0.5)
+                    if line is None:
+                        done += 1
+                    else:
+                        yield f"data: [Поток {wid + 1}] {line}\n\n"
+                except _queue.Empty:
+                    yield ": keepalive\n\n"
+
         yield "data: [EOF]\n\n"
         _active_jobs.pop(job_id, None)
 
@@ -304,12 +348,13 @@ def api_log_stream(job_id: str):
 
 @app.route("/api/run/<job_id>", methods=["DELETE"])
 def api_stop_run(job_id: str):
-    proc = _active_jobs.pop(job_id, None)
-    if proc:
-        try:
-            proc.terminate()
-        except Exception:
-            pass
+    job = _active_jobs.pop(job_id, None)
+    if job:
+        for proc in job['procs']:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
     return jsonify({"ok": True})
 
 
