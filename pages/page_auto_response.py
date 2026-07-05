@@ -285,13 +285,27 @@ class AutoResponsePage(BasePage):
                                             self.locator.modal_close_button.click()
                                         skip_count += 1
                                         continue
-                                    # Прокручиваем модал к кнопке (после заполнения письма она уходит вниз)
+                                    # Скроллим scrollable-контейнер модала через JS —
+                                    # Playwright scroll_into_view не пробивается через overflow:hidden родителей
                                     try:
-                                        btn_submit.scroll_into_view_if_needed(timeout=2000)
-                                        time.sleep(0.2)
+                                        self.page.evaluate("""
+                                            () => {
+                                                const btn = document.querySelector('[data-qa="vacancy-response-submit-popup"]');
+                                                if (!btn) return;
+                                                let el = btn.parentElement;
+                                                while (el && el !== document.body) {
+                                                    const ov = getComputedStyle(el).overflowY;
+                                                    if (ov === 'auto' || ov === 'scroll') {
+                                                        el.scrollTop = el.scrollHeight;
+                                                        return;
+                                                    }
+                                                    el = el.parentElement;
+                                                }
+                                            }
+                                        """)
+                                        time.sleep(0.3)
                                     except Exception:
                                         pass
-                                    # locator.click() сам делает scrollIntoView перед кликом
                                     try:
                                         btn_submit.click(timeout=8000)
                                         logger.info(f"[BasePage] Клик по элементу: {btn_submit}")
