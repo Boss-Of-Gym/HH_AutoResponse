@@ -59,18 +59,15 @@ class LoginPage(BasePage):
         logger.info(f"[Auth] шаг 6: после ввода пароля, url={self.page.url}")
 
     def assert_login_on_page(self) -> None:
-        # Проверяем наличие элементов авторизованного пользователя
-        has_profile = self.has_text(
-            selector_or_locator=self.locator.text_resume_and_profile,
-            expected_text='Резюме и профиль'
-        )
-        has_responses = self.has_text(
-            selector_or_locator=self.locator.text_response,
-            expected_text='Отклики'
-        )
-        if not has_profile and not has_responses:
-            import logging
-            logging.getLogger(__name__).error(
-                f"Авторизация не подтверждена: profile={has_profile}, responses={has_responses}, url={self.page.url}"
-            )
+        # Ждём появления одного из элементов авторизованного пользователя
+        confirmed = False
+        for locator in (self.locator.text_resume_and_profile, self.locator.text_response):
+            try:
+                locator.wait_for(state="visible", timeout=self.timeouts.EXPECT)
+                confirmed = True
+                break
+            except Exception:
+                pass
+        if not confirmed:
+            logger.error(f"Авторизация не подтверждена, url={self.page.url}")
             raise RuntimeError("Не удалось подтвердить авторизацию на HH.ru")

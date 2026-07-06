@@ -24,7 +24,7 @@ class Login:
 
     @property
     def button_enter_with_password(self):
-        return self.page.get_by_role("button", name="Войти с паролем")
+        return self.page.locator("[data-qa='expand-login-by-password']")
 
     @property
     def expected_text_page_password(self):
