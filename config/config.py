@@ -23,7 +23,6 @@ _cfg = _load_raw()
 
 
 def _s(*keys, default=None):
-    """Drill into _cfg with dot-path keys, return default if missing."""
     v = _cfg
     for k in keys:
         if not isinstance(v, dict):
@@ -33,8 +32,6 @@ def _s(*keys, default=None):
             return default
     return v
 
-
-# ─── URL / Timeouts ───────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Urls:
@@ -48,15 +45,11 @@ class Timeouts:
     SHORT: int = 1_000
 
 
-# ─── Credentials ──────────────────────────────────────────────────────────────
-
 @dataclass(frozen=True)
 class Credentials:
     LOGIN: str = (_s("credentials", "login") or os.getenv("login_number", "default_login"))
     PASSWORD: str = (_s("credentials", "password") or os.getenv("password", "default_password"))
 
-
-# ─── Profile (for cover letters) ──────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class ProfileConfig:
@@ -70,8 +63,6 @@ class ProfileConfig:
     PORTFOLIO: str = (_s("profile", "portfolio") or "")
     POSITION: str = (_s("profile", "position") or "QA Engineer")
 
-
-# ─── Search ───────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class SearchConfig:
@@ -88,8 +79,6 @@ class SearchConfig:
     MAX_PAGES: int = int(_s("search", "max_pages") or 99)
 
 
-# ─── Bot ──────────────────────────────────────────────────────────────────────
-
 @dataclass(frozen=True)
 class BotConfig:
     MAX_RESPONSES_PER_RUN: int = int(_s("bot", "max_responses_per_run") or 150)
@@ -105,8 +94,6 @@ class BotConfig:
     SALARY_MIN: int = int(_s("bot", "salary_min") or 0)
     USE_SCORING: bool = bool(_s("bot", "use_scoring", default=True))
 
-
-# ─── Resume ───────────────────────────────────────────────────────────────────
 
 def _build_tuples(section_key: str, val_key: str, defaults: list) -> tuple:
     raw = _s("resume", section_key)
@@ -144,8 +131,6 @@ class ResumeConfig:
     ])
 
 
-# ─── Blacklist ─────────────────────────────────────────────────────────────────
-
 @dataclass(frozen=True)
 class BlacklistConfig:
     COMPANIES: tuple = tuple(
@@ -153,15 +138,11 @@ class BlacklistConfig:
     )
 
 
-# ─── ResumeRaise ──────────────────────────────────────────────────────────────
-
 @dataclass(frozen=True)
 class ResumeRaiseConfig:
     ENABLED: bool = bool(_s("schedule", "resume_raise_enabled", default=True))
     INTERVAL_HOURS: float = float(_s("schedule", "resume_raise_interval") or 4.0)
 
-
-# ─── Browser ──────────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class BrowserConfig:
@@ -169,8 +150,6 @@ class BrowserConfig:
     LOCALE: str = (_s("browser", "locale") or "ru-RU")
     TIMEZONE: str = (_s("browser", "timezone") or "Europe/Moscow")
 
-
-# ─── Root Config ──────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Config:
@@ -188,6 +167,5 @@ class Config:
 
 config = Config()
 
-# Module-level aliases so callers can use config.Profile.X / config.Browser.X pattern
 Profile = ProfileConfig()
 Browser = BrowserConfig()

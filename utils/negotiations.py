@@ -1,16 +1,3 @@
-"""
-п.4: Отслеживание статусов откликов через браузер HH.ru.
-Читает страницу /applicant/negotiations, обходит все статусные вкладки,
-парсит карточки переговоров, сохраняет в SQLite.
-
-Структура страницы (подтверждено из DOM):
-  - Вкладки: [data-qa='tab_filter_*'] — каждая = отдельный статус
-  - Счётчик вкладки: [data-qa='tab-postfix'] внутри wrapper'а вкладки
-  - Карточка: [data-qa='negotiations-item']
-  - Название вакансии: [data-qa='negotiations-item-vacancy'] внутри <a href='/vacancy/...'>
-  - Компания: [data-qa='negotiations-item-company']
-  - Дата отклика: [data-qa='negotiations-item-date']
-"""
 import logging
 import re
 import time
@@ -24,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 _NEGOTIATIONS_URL = "https://hh.ru/applicant/negotiations"
 
-# Вкладки: (data-qa кнопки, читаемый статус для БД)
 _TABS = [
     ("tab_filter_invitation", "Приглашение"),
     ("tab_filter_interview",  "Собеседование"),
@@ -35,11 +21,6 @@ _TABS = [
 
 
 def check_and_save_negotiations(page: Page) -> list[dict]:
-    """
-    Обходит все статусные вкладки страницы откликов HH.ru,
-    сохраняет статусы в БД. Возвращает список изменённых статусов:
-    [{url, title, company, old_status, new_status}].
-    """
     logger.info("Проверка статусов откликов...")
     try:
         page.goto(_NEGOTIATIONS_URL)
@@ -73,11 +54,9 @@ def check_and_save_negotiations(page: Page) -> list[dict]:
 
 
 def _get_tab_count(page: Page, tab_qa: str) -> int:
-    """Читает число в бейдже вкладки (e.g. 'Ожидание 269' → 269). 0 если нет."""
     try:
         wrapper = page.locator(f"[data-qa='wrapper-{tab_qa}']")
         if wrapper.count() == 0:
-            # Вкладка без wrapper (например «Приглашение» при 0 откликов скрыта)
             tab = page.locator(f"[data-qa='{tab_qa}']")
             if tab.count() == 0:
                 return 0
@@ -95,7 +74,6 @@ def _get_tab_count(page: Page, tab_qa: str) -> int:
 
 
 def _parse_tab(page: Page, tab_qa: str, status_label: str) -> list[dict]:
-    """Кликает по вкладке и возвращает все карточки с неё."""
     try:
         tab = page.locator(f"[data-qa='{tab_qa}']")
         if tab.count() == 0:
@@ -110,7 +88,6 @@ def _parse_tab(page: Page, tab_qa: str, status_label: str) -> list[dict]:
 
 
 def _parse_items(page: Page, status_label: str) -> list[dict]:
-    """Парсит все [data-qa='negotiations-item'] на текущей странице."""
     items = []
     checked_at = datetime.now().isoformat(timespec="seconds")
 
@@ -121,7 +98,6 @@ def _parse_items(page: Page, status_label: str) -> list[dict]:
         for i in range(total):
             card = cards.nth(i)
             try:
-                # URL вакансии из ссылки внутри карточки
                 vac_link = card.locator("a[href*='/vacancy/']").first
                 if vac_link.count() == 0:
                     continue
@@ -130,13 +106,11 @@ def _parse_items(page: Page, status_label: str) -> list[dict]:
                 if not vacancy_url:
                     continue
 
-                # Название вакансии
                 title = ""
                 title_el = card.locator("[data-qa='negotiations-item-vacancy']")
                 if title_el.count() > 0:
                     title = title_el.text_content().strip()
 
-                # Компания
                 company = ""
                 company_el = card.locator("[data-qa='negotiations-item-company']")
                 if company_el.count() > 0:
@@ -159,7 +133,6 @@ def _parse_items(page: Page, status_label: str) -> list[dict]:
 
 
 def _normalize_url(href: str) -> str | None:
-    """Нормализует URL вакансии к виду https://hh.ru/vacancy/ID."""
     if not href or "/vacancy/" not in href:
         return None
     url = href.split("?")[0]

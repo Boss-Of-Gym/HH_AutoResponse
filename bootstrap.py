@@ -1,10 +1,3 @@
-"""
-bootstrap.py — настройка окружения Playwright перед запуском.
-
-Импортируется в main.py ДО всех playwright-импортов.
-В exe-сборке (PyInstaller onedir) устанавливает PLAYWRIGHT_BROWSERS_PATH
-и при первом запуске скачивает Chromium через встроенный playwright-драйвер.
-"""
 import os
 import subprocess
 import sys
@@ -41,7 +34,6 @@ def _browsers_dir() -> Path:
 
 
 def setup_environment() -> None:
-    """Устанавливает PLAYWRIGHT_BROWSERS_PATH и при необходимости скачивает Chromium."""
     browsers = _browsers_dir()
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers)
     if getattr(sys, "frozen", False):

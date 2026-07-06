@@ -36,7 +36,6 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
     from utils import db as _db_check
     _db_check.init_db()
 
-    # Проверяем лимит HH.ru до запуска браузера
     if not dry_run:
         limit_at = _db_check.get_limit_reached_at()
         if limit_at:
@@ -54,7 +53,6 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
                 logger.warning(sep)
                 return
 
-    # Распределяем запросы между воркерами
     all_queries = config.SearchConfig.QUERIES
     if workers > 1:
         queries = [q for i, q in enumerate(all_queries) if i % workers == worker_id]
@@ -100,7 +98,6 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
             page = context.new_page()
             page.set_default_timeout(config.Timeouts.PAGE_LOAD)
             page.set_default_navigation_timeout(config.Timeouts.PAGE_LOAD)
-            # Авторизация с retry при сетевых ошибках
             for attempt in range(1, _MAX_RETRIES + 1):
                 try:
                     auth = Auth(page)
@@ -121,7 +118,6 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
                             raise
                     raise
 
-            # п.1: поднимаем резюме перед откликами
             if config.ResumeRaiseConfig.ENABLED and not dry_run:
                 try:
                     from utils.resume_raiser import raise_all_resumes
@@ -151,7 +147,6 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
 
 
 def check_status() -> None:
-    """п.4: проверяет статусы откликов на странице переговоров HH.ru."""
     logger.info("=" * 55)
     logger.info("  AutoResponseHH — проверка статусов откликов")
     logger.info("=" * 55)
@@ -196,7 +191,6 @@ def check_status() -> None:
 
 
 def _run_scheduler(run_at: str) -> None:
-    """п.32: запускает run() каждый день в указанное время HH:MM"""
     try:
         import schedule
     except ImportError:
@@ -280,7 +274,6 @@ def main() -> None:
     elif args.run or args.dry_run:
         run(dry_run=args.dry_run, worker_id=args.worker_id, workers=args.workers)
     else:
-        # По умолчанию — GUI (python main.py или python main.py --gui)
         from gui.app import run_gui
         run_gui(port=args.port)
 

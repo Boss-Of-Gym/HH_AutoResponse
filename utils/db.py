@@ -1,7 +1,3 @@
-"""
-SQLite storage layer — replaces applied_vacancies.json and manual_review.json.
-sqlite3 входит в стандартную библиотеку Python, дополнительных зависимостей нет.
-"""
 import json
 import logging
 import sqlite3
@@ -18,14 +14,13 @@ _LEGACY_MANUAL = "manual_review.json"
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_FILE, timeout=5)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")    # не блокирует читателей при записи
-    conn.execute("PRAGMA synchronous=NORMAL")  # баланс надёжность/скорость
-    conn.execute("PRAGMA busy_timeout=5000")   # ждём 5с при конкурентной записи
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     return conn
 
 
 def init_db() -> None:
-    """Создаёт таблицы и мигрирует JSON → SQLite при первом запуске."""
     with _connect() as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS applied_vacancies (
@@ -64,7 +59,6 @@ def init_db() -> None:
 
 
 def _migrate_legacy() -> None:
-    """Импортирует данные из JSON-файлов и переименовывает их в .bak."""
     applied_path = Path(_LEGACY_APPLIED)
     manual_path = Path(_LEGACY_MANUAL)
 
@@ -123,7 +117,6 @@ def _migrate_legacy() -> None:
 
 
 def load_applied() -> dict:
-    """Возвращает {url: {url, title, company, applied_at, query}}."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT url, title, company, applied_at, query FROM applied_vacancies"
@@ -132,7 +125,6 @@ def load_applied() -> dict:
 
 
 def delete_expired_applied(cutoff_iso: str) -> int:
-    """Удаляет из applied_vacancies записи старше cutoff_iso. Возвращает количество удалённых."""
     with _connect() as conn:
         cur = conn.execute(
             "DELETE FROM applied_vacancies WHERE applied_at != '' AND applied_at < ?",
@@ -142,7 +134,6 @@ def delete_expired_applied(cutoff_iso: str) -> int:
 
 
 def save_applied(applied: dict) -> None:
-    """Upsert applied_vacancies — не удаляет существующие записи."""
     if not applied:
         return
     with _connect() as conn:
@@ -158,14 +149,12 @@ def save_applied(applied: dict) -> None:
 
 
 def load_manual_review() -> set:
-    """Возвращает set URL для ручного просмотра."""
     with _connect() as conn:
         rows = conn.execute("SELECT url FROM manual_review").fetchall()
     return {row["url"] for row in rows}
 
 
 def save_manual_review(urls: set) -> None:
-    """Добавляет новые URL в manual_review (upsert, не удаляет старые)."""
     if not urls:
         return
     with _connect() as conn:
@@ -176,7 +165,6 @@ def save_manual_review(urls: set) -> None:
 
 
 def log_response(url: str, title: str, company: str, query: str) -> None:
-    """Записывает отклик в response_log (в дополнение к CSV)."""
     with _connect() as conn:
         conn.execute(
             "INSERT INTO response_log (timestamp, query, url, title, company) "
@@ -186,7 +174,6 @@ def log_response(url: str, title: str, company: str, query: str) -> None:
 
 
 def load_negotiations() -> dict:
-    """Возвращает {vacancy_url: {title, company, status, prev_status, first_seen, last_checked}}."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT vacancy_url, title, company, status, prev_status, first_seen, last_checked "
@@ -196,10 +183,6 @@ def load_negotiations() -> dict:
 
 
 def save_negotiations(items: list[dict]) -> list[dict]:
-    """
-    Upsert переговоров. Возвращает список изменений статусов:
-    [{url, title, company, old_status, new_status}]
-    """
     if not items:
         return []
 
@@ -247,7 +230,6 @@ def save_negotiations(items: list[dict]) -> list[dict]:
 
 
 def get_negotiations_stats() -> dict:
-    """Возвращает сводку по статусам откликов."""
     with _connect() as conn:
         rows = conn.execute(
             "SELECT status, COUNT(*) as cnt FROM negotiations GROUP BY status ORDER BY cnt DESC"
@@ -256,7 +238,6 @@ def get_negotiations_stats() -> dict:
 
 
 def get_weekly_activity() -> list:
-    """Возвращает список из 7 чисел (откликов по дням, сегодня последний)."""
     from datetime import date, timedelta
     today = date.today()
     try:
@@ -274,7 +255,6 @@ def get_weekly_activity() -> list:
 
 
 def get_history(limit: int = 50, offset: int = 0, search: str = '', status_filter: str = '') -> list:
-    """История откликов: applied_vacancies LEFT JOIN negotiations по URL."""
     like = f'%{search}%' if search else '%'
     with _connect() as conn:
         if status_filter and status_filter != 'all':
@@ -302,7 +282,6 @@ def get_history(limit: int = 50, offset: int = 0, search: str = '', status_filte
 
 
 def is_already_applied(url: str) -> bool:
-    """Проверяет БД напрямую — для корректной дедупликации при параллельных воркерах."""
     if not url:
         return False
     try:
@@ -316,7 +295,6 @@ def is_already_applied(url: str) -> bool:
 
 
 def save_limit_reached(reached_at: datetime) -> None:
-    """Сохраняет время достижения лимита HH.ru (200 откликов/24ч)."""
     with _connect() as conn:
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('limit_reached_at', ?)",
@@ -325,7 +303,6 @@ def save_limit_reached(reached_at: datetime) -> None:
 
 
 def get_limit_reached_at() -> "datetime | None":
-    """Возвращает время последнего достижения лимита или None."""
     try:
         with _connect() as conn:
             row = conn.execute(
@@ -339,7 +316,6 @@ def get_limit_reached_at() -> "datetime | None":
 
 
 def get_history_count(search: str = '', status_filter: str = '') -> int:
-    """Количество записей истории для пагинации."""
     like = f'%{search}%' if search else '%'
     with _connect() as conn:
         if status_filter and status_filter != 'all':

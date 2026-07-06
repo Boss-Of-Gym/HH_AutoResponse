@@ -1,11 +1,3 @@
-"""
-HH.ru Public API client — опциональное обогащение данных (п.25).
-Используется для предварительной фильтрации вакансий по зарплате,
-свежести и другим параметрам ДО открытия браузера.
-
-Текущая браузерная логика откликов НЕ затрагивается.
-API используется только для сбора метаданных.
-"""
 import json
 import logging
 import time
@@ -27,12 +19,6 @@ def fetch_vacancies(
     salary_min: int | None = None,
     freshness_days: int = 0,
 ) -> list[dict]:
-    """Получает список вакансий через HH.ru API.
-
-    Возвращает список dict с полями:
-      id, url, title, company, salary_from, salary_to,
-      salary_currency, published_at, published_days_ago
-    """
     exp_params = "&".join(f"experience={e}" for e in experience)
     results = []
 
@@ -67,7 +53,6 @@ def fetch_vacancies(
             pub_at = item.get("published_at", "")
             days_ago = _days_ago(pub_at)
 
-            # Фильтр по свежести (если задан)
             if freshness_days > 0 and days_ago is not None and days_ago > freshness_days:
                 continue
 
@@ -76,7 +61,6 @@ def fetch_vacancies(
             currency = salary.get("currency", "RUR")
             gross = salary.get("gross", True)
 
-            # Фильтр по минимальной зарплате (если задан)
             if salary_min and currency == "RUR":
                 net_from = int(sal_from * 0.87) if sal_from and gross else sal_from
                 net_to = int(sal_to * 0.87) if sal_to and gross else sal_to
@@ -101,7 +85,7 @@ def fetch_vacancies(
         if page + 1 >= total_pages:
             break
 
-        time.sleep(0.3)  # уважаем rate-limit API
+        time.sleep(0.3)
 
     return results
 
@@ -113,8 +97,6 @@ def fetch_all_queries(
     salary_min: int | None = None,
     freshness_days: int = 0,
 ) -> dict[str, list[dict]]:
-    """Выполняет запросы ко всем поисковым запросам из конфига.
-    Возвращает {query: [vacancy_dict, ...]}"""
     result = {}
     for query in queries:
         logger.info(f"[HH API] Запрос: '{query}'")
@@ -131,11 +113,9 @@ def fetch_all_queries(
 
 
 def _days_ago(iso_dt: str) -> int | None:
-    """Возвращает количество дней с момента публикации вакансии."""
     if not iso_dt:
         return None
     try:
-        # HH.ru отдаёт "2026-07-01T10:00:00+0300"
         dt = datetime.fromisoformat(iso_dt.replace("+0300", "+03:00"))
         return (datetime.now(dt.tzinfo) - dt).days
     except (ValueError, TypeError):

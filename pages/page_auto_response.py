@@ -17,17 +17,15 @@ from utils import db
 logger = logging.getLogger(__name__)
 
 SEARCH_URL = "https://hh.ru/search/vacancy"
-COVER_LETTER_FILE = "cover_letter.txt"  # legacy fallback
+COVER_LETTER_FILE = "cover_letter.txt"
 
 
 def _load_cover_letters() -> dict[str, str]:
-    """п.3: загружает все шаблоны из cover_letters/ + legacy cover_letter.txt."""
     templates: dict[str, str] = {}
     cover_dir = Path(config.ResumeConfig.COVER_LETTER_DIR)
     if cover_dir.is_dir():
         for f in sorted(cover_dir.glob("*.txt")):
             templates[f.stem] = f.read_text(encoding="utf-8").strip()
-    # Legacy fallback
     if not templates.get("default"):
         legacy = Path(COVER_LETTER_FILE)
         if legacy.exists():
@@ -67,7 +65,6 @@ class AutoResponsePage(BasePage):
         company_counts: dict = {}
         started_at = datetime.now()
 
-        # п.5: предфильтрация через HH.ru API
         api_map: dict = {}
         if config.BotConfig.USE_API_PREFILTER:
             api_map = self._fetch_api_map()
@@ -88,7 +85,6 @@ class AutoResponsePage(BasePage):
                 logger.error("Сессия истекла — завершаем работу")
                 break
 
-            # п.14: проверяем личный лимит откликов за сессию
             if total_count >= config.BotConfig.MAX_RESPONSES_PER_RUN:
                 logger.info(
                     f"Достигнут лимит сессии: {config.BotConfig.MAX_RESPONSES_PER_RUN} откликов. "
@@ -101,7 +97,6 @@ class AutoResponsePage(BasePage):
 
             try:
                 while count_page < config.SearchConfig.MAX_PAGES:
-                    # п.14: проверка лимита перед каждой страницей
                     if total_count >= config.BotConfig.MAX_RESPONSES_PER_RUN:
                         break
 
@@ -125,7 +120,6 @@ class AutoResponsePage(BasePage):
                     skip_count = 0
 
                     while True:
-                        # п.14: проверка лимита в inner-цикле
                         if total_count >= config.BotConfig.MAX_RESPONSES_PER_RUN:
                             logger.info(f"Достигнут лимит сессии: {config.BotConfig.MAX_RESPONSES_PER_RUN}")
                             break
@@ -140,11 +134,9 @@ class AutoResponsePage(BasePage):
                             skip_count += 1
                             continue
 
-                        # Извлекаем метаданные вакансии ДО клика (п.8, п.9, п.16, п.17, п.18, п.19)
                         vacancy_url = self._get_vacancy_url(btn)
                         title, company, date_text = self._get_vacancy_info(btn)
 
-                        # п.18: дедупликация — память (быстро) + БД (межпроцессная защита)
                         if vacancy_url and (
                             vacancy_url in applied or db.is_already_applied(vacancy_url)
                         ):
@@ -153,41 +145,35 @@ class AutoResponsePage(BasePage):
                             skip_count += 1
                             continue
 
-                        # Fuzzy-дедупликация: компания+название, ловит репосты с новым URL
                         if company and title and self._is_fuzzy_duplicate(company, title, applied):
                             logger.debug(f"  Пропуск (fuzzy-дубль): {company} | {title}")
                             stats["skipped_applied"] += 1
                             skip_count += 1
                             continue
 
-                        # п.5: предфильтрация — пропускаем вакансии не из API-выборки
                         if api_map and vacancy_url and vacancy_url not in api_map:
                             logger.debug(f"  Пропуск (не прошла API-фильтр): {vacancy_url}")
                             stats["skipped_prefilter"] += 1
                             skip_count += 1
                             continue
 
-                        # п.16: фильтрация по свежести вакансии
                         if config.BotConfig.FRESHNESS_DAYS > 0 and not self._is_vacancy_fresh(date_text):
                             logger.debug(f"  Пропуск (устарела, '{date_text}'): {title or vacancy_url}")
                             stats["skipped_fresh"] += 1
                             skip_count += 1
                             continue
 
-                        # п.17: блэклист компаний + п.5: лимит откликов на компанию
                         if company and not self._is_company_allowed(company, company_counts):
                             logger.debug(f"  Пропуск (компания): {company}")
                             stats["skipped_company"] += 1
                             skip_count += 1
                             continue
 
-                        # Задержка только перед реальным кликом (п.10: из конфига)
                         time.sleep(random.uniform(config.BotConfig.DELAY_MIN, config.BotConfig.DELAY_MAX))
 
                         if self.locator.open_chat.is_visible():
                             self.click(self.locator.close_chat_button)
 
-                        # Закрываем висячий модал перед кликом
                         try:
                             if self.page.locator("[data-qa='modal-overlay']").is_visible():
                                 logger.warning("Обнаружен висячий модал — закрываем перед кликом")
@@ -208,10 +194,8 @@ class AutoResponsePage(BasePage):
                             skip_count += 1
                             continue
 
-                        # п.10: задержка из конфига
                         time.sleep(config.BotConfig.DELAY_AFTER_MODAL)
 
-                        # Лимит HH — проверяем ДО URL-сравнения
                         if self._is_response_limit_reached():
                             self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
                             return
@@ -245,12 +229,10 @@ class AutoResponsePage(BasePage):
                                     skip_count += 1
                                     continue
 
-                                # п.19: авто-выбор резюме по типу вакансии
                                 if self.locator.modal_window_drop_base.is_visible():
                                     self._select_resume_in_modal(title)
                                     time.sleep(0.5)
 
-                                # п.3: персонализированное письмо по типу вакансии
                                 if self.locator.button_add_cover_letter.is_visible():
                                     self.click(self.locator.button_add_cover_letter)
                                     time.sleep(0.5)
@@ -263,7 +245,6 @@ class AutoResponsePage(BasePage):
                                     self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
                                     return
 
-                                # п.7: dry-run — не нажимаем submit
                                 if dry_run:
                                     score = self._get_vacancy_score(vacancy_url, api_map)
                                     score_str = f" [скор:{score}]" if score else ""
@@ -285,8 +266,6 @@ class AutoResponsePage(BasePage):
                                             self.locator.modal_close_button.click()
                                         skip_count += 1
                                         continue
-                                    # Модал без скрола (overflow:hidden) — кнопка есть в DOM но обрезана.
-                                    # JS-клик обходит все проверки видимости Playwright.
                                     clicked = False
                                     try:
                                         btn_submit.evaluate("el => el.click()")
@@ -307,7 +286,6 @@ class AutoResponsePage(BasePage):
                                             continue
                                     time.sleep(0.5)
 
-                                    # Лимит как ответ сервера на клик submit
                                     if self._is_response_limit_reached():
                                         self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
                                         return
@@ -316,11 +294,9 @@ class AutoResponsePage(BasePage):
                                     stats["responses"] += 1
                                     response_sent = True
 
-                                    # Обновляем счётчик компании
                                     if company:
                                         company_counts[company] = company_counts.get(company, 0) + 1
 
-                                    # Ждём пока модал закроется
                                     try:
                                         self.page.locator("[data-qa='modal-overlay']").wait_for(
                                             state="hidden", timeout=1500
@@ -332,7 +308,6 @@ class AutoResponsePage(BasePage):
                                         except Exception:
                                             pass
 
-                                    # Сохраняем applied
                                     if vacancy_url:
                                         applied[vacancy_url] = {
                                             "title": title,
@@ -344,7 +319,6 @@ class AutoResponsePage(BasePage):
                                     if n <= 1 or total_count % n == 0:
                                         self._save_applied(applied)
 
-                                    # п.6: скоринг + п.8: логируем
                                     score = self._get_vacancy_score(vacancy_url, api_map)
                                     score_str = f" [скор:{score}]" if score and config.BotConfig.USE_SCORING else ""
                                     logger.info(
@@ -352,16 +326,13 @@ class AutoResponsePage(BasePage):
                                         f"{company or '?'}{score_str} ('{query}', стр.{count_page + 1})"
                                     )
 
-                                    # п.9: CSV-лог откликов
                                     if config.BotConfig.LOG_RESPONSES_CSV and vacancy_url:
                                         self._log_response_csv(vacancy_url, title, company, query)
 
-                                # dry_run: тоже обновляем company_counts для корректного лимита
                                 if dry_run and company:
                                     company_counts[company] = company_counts.get(company, 0) + 1
 
                             except Exception as modal_err:
-                                # п.6: сетевой retry в обработчике модала
                                 if self._is_response_limit_reached():
                                     self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
                                     return
@@ -382,7 +353,6 @@ class AutoResponsePage(BasePage):
                                 except PlaywrightTimeoutError:
                                     logger.warning("Тост 'Отклик отправлен' не появился")
                         else:
-                            # Редирект на внешний сайт
                             stats["redirects"] += 1
                             logger.debug(f"  Редирект при отклике: {title or vacancy_url}")
                             search_page_url = self._safe_return_to_search(search_page_url)
@@ -414,10 +384,7 @@ class AutoResponsePage(BasePage):
         self._save_manual_review(manual_review)
         self._log_final_stats(query_stats, total_count, started_at, company_counts)
 
-    # ─────────────────────────── Вспомогательные ───────────────────────────
-
     def _is_fuzzy_duplicate(self, company: str, title: str, applied: dict) -> bool:
-        """Возвращает True если (company, ~title) уже есть в applied — ловит репосты."""
         company_low = company.lower()
         title_low = title.lower()
         for meta in applied.values():
@@ -450,7 +417,6 @@ class AutoResponsePage(BasePage):
             return None
 
     def _get_vacancy_info(self, btn) -> tuple[str, str, str]:
-        """Извлекает (title, company, date_text) из карточки вакансии (п.8, п.16)"""
         try:
             info = btn.evaluate("""el => {
                 const card = el.closest('[data-qa="vacancy-serp__vacancy"]')
@@ -473,13 +439,11 @@ class AutoResponsePage(BasePage):
             return '', '', ''
 
     def _is_vacancy_fresh(self, date_text: str) -> bool:
-        """п.16: True если вакансия не старше FRESHNESS_DAYS"""
         if not date_text:
             return True
         text = date_text.lower().strip()
         today = datetime.now()
 
-        # ISO datetime (из атрибута datetime="2026-07-01T...")
         try:
             dt = datetime.fromisoformat(date_text[:10])
             return (today - dt).days <= config.BotConfig.FRESHNESS_DAYS
@@ -506,7 +470,6 @@ class AutoResponsePage(BasePage):
         return True
 
     def _is_company_allowed(self, company: str, company_counts: dict) -> bool:
-        """п.5 + п.17: проверяет блэклист и лимит откликов на компанию"""
         company_lower = company.lower()
 
         for blacklisted in config.BlacklistConfig.COMPANIES:
@@ -520,15 +483,6 @@ class AutoResponsePage(BasePage):
         return True
 
     def _select_resume_in_modal(self, vacancy_title: str) -> None:
-        """п.19: выбирает резюме в дропдауне по типу вакансии.
-
-        Два состояния дропдауна (подтверждено из DOM):
-        - ЗАКРЫТ: trigger-карточка (div[role='button']) со встроенным [data-qa='cell']
-                  показывает текущий выбор. [data-qa='drop-base'] НЕ виден.
-                  Клик по ней ОТКРЫВАЕТ список — НЕ подтверждает выбор!
-        - ОТКРЫТ: [data-qa='drop-base'] listbox виден поверх модалки,
-                  перекрывает кнопки. Клик по trigger-карточке ЗАКРЫВАЕТ список.
-        """
         title_lower = (vacancy_title or "").lower()
         selected_name = config.ResumeConfig.DEFAULT
         for keyword, resume_name in config.ResumeConfig.MATCH:
@@ -540,9 +494,6 @@ class AutoResponsePage(BasePage):
         trigger   = self.locator.modal_resume_trigger
 
         if not drop_base.is_visible():
-            # ── Дропдаун ЗАКРЫТ ─────────────────────────────────────────
-            # Trigger-карточка показывает уже выбранное резюме.
-            # Проверяем нужно ли переключаться.
             try:
                 current_text = self.locator.modal_window_drop_base.inner_text().strip()
             except Exception:
@@ -550,17 +501,14 @@ class AutoResponsePage(BasePage):
             logger.info(f"  Дропдаун закрыт, показано: '{current_text}'")
 
             if selected_name.lower() in current_text.lower() or not current_text:
-                # Уже выбрано нужное резюме — ничего не делаем, кнопка уже видна
                 logger.info(f"  Резюме '{selected_name}' уже выбрано")
                 return
 
-            # Нужно другое резюме — открываем список кликом по trigger-карточке
             logger.info(f"  Нужно '{selected_name}', открываем дропдаун")
             if trigger.is_visible():
                 trigger.click()
                 time.sleep(0.3)
 
-        # ── Дропдаун ОТКРЫТ — выбираем нужный вариант ───────────────────
         if drop_base.is_visible():
             option = self.locator.resume_option_in_drop(selected_name)
             cnt = option.count()
@@ -569,7 +517,6 @@ class AutoResponsePage(BasePage):
                 option.first.click()
                 logger.info(f"  Выбрано резюме: '{selected_name}'")
             else:
-                # Fallback: первая опция в открытом списке
                 first_opt = self.page.locator("[data-qa='drop-base'] [data-qa='cell']").first
                 if first_opt.is_visible():
                     first_opt.click()
@@ -579,8 +526,6 @@ class AutoResponsePage(BasePage):
         if self.locator.modal_window_button_response.is_visible():
             return
 
-        # Дропдаун не закрылся после выбора опции (уже была выбрана) —
-        # кликаем по trigger-карточке чтобы убрать drop-base overlay
         if drop_base.is_visible() and trigger.is_visible():
             trigger.click()
             logger.info("  Закрыли дропдаун кликом по trigger-карточке")
@@ -590,7 +535,6 @@ class AutoResponsePage(BasePage):
             logger.warning("  Кнопка «Откликнуться» не видна после работы с дропдауном")
 
     def _get_cover_letter_for(self, title: str) -> str:
-        """п.3: выбирает шаблон письма по ключевым словам в заголовке вакансии."""
         title_lower = (title or "").lower()
         for keyword, tpl_name in config.ResumeConfig.COVER_LETTER_MATCH:
             if keyword in title_lower:
@@ -601,7 +545,6 @@ class AutoResponsePage(BasePage):
         return self._cover_letters.get("default", "")
 
     def _format_cover_letter(self, template: str, title: str, company: str) -> str:
-        """Подставляет все переменные профиля и вакансии в шаблон письма."""
         company_clause = f" в компании {company}" if company else ""
         variables = {
             "title": title or "данную вакансию",
@@ -628,7 +571,6 @@ class AutoResponsePage(BasePage):
             return template
 
     def _fetch_api_map(self) -> dict:
-        """п.5: получает вакансии через HH.ru API, возвращает {url: vacancy_dict}."""
         try:
             from utils.hh_api import fetch_all_queries
             logger.info("Предфильтрация через HH.ru API...")
@@ -653,7 +595,6 @@ class AutoResponsePage(BasePage):
             return {}
 
     def _compute_score(self, vacancy: dict) -> int:
-        """п.6: считает скор вакансии по зарплате и свежести."""
         score = 0
         sal_from = vacancy.get("salary_from") or 0
         if sal_from:
@@ -675,13 +616,11 @@ class AutoResponsePage(BasePage):
         return score
 
     def _get_vacancy_score(self, url: str | None, api_map: dict) -> int:
-        """Возвращает скор из api_map или 0 если не найдено."""
         if not url or not api_map:
             return 0
         return api_map.get(url, {}).get("score", 0)
 
     def _is_response_limit_reached(self) -> bool:
-        """п.7: детектирует лимит 200 откликов/24ч от HH.ru"""
         try:
             self.page.locator(
                 "xpath=//*[@data-qa-popup-error-code='negotiations-limit-exceeded']"
@@ -736,8 +675,6 @@ class AutoResponsePage(BasePage):
         logger.info("  Попробуйте запустить программу позднее.")
         logger.info(sep)
 
-    # ─────────────────────────── Хранилище ───────────────────────────
-
     def _load_applied(self) -> dict:
         return db.load_applied()
 
@@ -745,7 +682,6 @@ class AutoResponsePage(BasePage):
         db.save_applied(applied)
 
     def _expire_applied(self, applied: dict) -> dict:
-        """п.13: удаляет из applied и из БД записи старше APPLIED_EXPIRY_DAYS"""
         days = config.BotConfig.APPLIED_EXPIRY_DAYS
         if not days:
             return applied
@@ -772,10 +708,7 @@ class AutoResponsePage(BasePage):
         time.sleep(0.5)
         return self.page.url
 
-    # ─────────────────────────── Логирование ───────────────────────────
-
     def _log_response_csv(self, url: str, title: str, company: str, query: str) -> None:
-        """п.9: записывает отклик в CSV-файл и в SQLite response_log"""
         db.log_response(url, title, company, query)
         log_file = Path(f"response_log_{datetime.now().strftime('%Y-%m-%d')}.csv")
         write_header = not log_file.exists()
@@ -792,7 +725,6 @@ class AutoResponsePage(BasePage):
         self, query_stats: dict, total_count: int,
         started_at: datetime, company_counts: dict
     ) -> None:
-        """Расширенный вывод статистики"""
         elapsed = datetime.now() - started_at
         avg = elapsed.total_seconds() / total_count if total_count else 0
 

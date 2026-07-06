@@ -1,7 +1,3 @@
-"""
-п.1: Автоматическое поднятие резюме в поиске HH.ru.
-HH.ru разрешает поднятие раз в 4 часа.
-"""
 import logging
 import time
 
@@ -13,13 +9,6 @@ _RESUMES_URL = "https://hh.ru/applicant/resumes"
 
 
 def raise_all_resumes(page: Page) -> int:
-    """
-    Переходит на страницу резюме и нажимает «Поднять в поиске» для каждого
-    доступного резюме. Возвращает количество поднятых резюме.
-
-    Кнопка поднятия — <a data-qa="resume-update-button"> (не <button>).
-    Может быть несколько резюме — нажимаем на каждое.
-    """
     logger.info("Поднятие резюме в поиске...")
     try:
         page.goto(_RESUMES_URL)
@@ -31,7 +20,6 @@ def raise_all_resumes(page: Page) -> int:
 
     raised = 0
 
-    # Основной локатор: <a data-qa="resume-update-button"> (подтверждён из DOM)
     try:
         buttons = page.locator("[data-qa='resume-update-button']")
         count = buttons.count()

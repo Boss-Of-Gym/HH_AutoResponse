@@ -6,18 +6,12 @@ logger = logging.getLogger(__name__)
 
 
 class BasePage:
-    """Базовый класс для всех страниц Playwright.
-       Поддерживает селекторы как строки и Locator объекты.
-    """
 
     def __init__(self, page: Page):
         self.page = page
         self.base_url = config.Urls.BASE_URL
         self.timeouts = config.Timeouts
 
-    # =========================
-    # Навигация
-    # =========================
     def open(self, url: str = None):
         target_url = url or self.base_url
         logger.info(f"[BasePage] Открываем страницу: {target_url}")
@@ -26,9 +20,6 @@ class BasePage:
     def reload(self):
         self.page.reload(timeout=self.timeouts.PAGE_LOAD)
 
-    # =========================
-    # Взаимодействие с элементами
-    # =========================
     def click(self, selector_or_locator):
         try:
             locator = self._ensure_locator(selector_or_locator)
@@ -95,9 +86,6 @@ class BasePage:
             logger.error(f"[BasePage] Чекбокс {locator} не найден для uncheck")
             raise
 
-    # =========================
-    # Проверки и получение данных
-    # =========================
     def get_text(self, selector_or_locator) -> str:
         locator = self._ensure_locator(selector_or_locator)
         locator.wait_for(state="visible", timeout=self.timeouts.SHORT)
@@ -138,19 +126,11 @@ class BasePage:
     def assert_url(self, expected_url: str):
         expect(self.page).to_have_url(expected_url, timeout=self.timeouts.EXPECT)
 
-    # =========================
-    # Вспомогательные методы
-    # =========================
     def _ensure_locator(self, selector_or_locator):
-        """
-        Преобразует строку-селектор в Locator.
-        Если передан Locator — возвращает как есть.
-        """
         if isinstance(selector_or_locator, str):
             return self.page.locator(selector_or_locator)
         return selector_or_locator
-    
+
     def scroll_and_wait(self, locator, timeout=5000):
         locator.scroll_into_view_if_needed()
         locator.wait_for(state="visible", timeout=timeout)
-

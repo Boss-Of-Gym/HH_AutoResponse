@@ -26,7 +26,6 @@ class LoginPage(BasePage):
         self.page.wait_for_load_state("domcontentloaded")
         logger.info(f"[Auth] шаг 2: после перехода, url={self.page.url}")
 
-        # Выбираем «Я ищу работу» если страница выбора типа аккаунта
         applicant_btn = self.page.get_by_text("Я ищу работу", exact=False).first
         if self.is_visible(applicant_btn):
             logger.info("[Auth] шаг 2a: выбираем «Я ищу работу»")
@@ -37,7 +36,6 @@ class LoginPage(BasePage):
         self.page.wait_for_load_state("domcontentloaded")
         logger.info(f"[Auth] шаг 3: после клика «Войти», url={self.page.url}")
 
-        # login_number: email-поле → phone-поле → fallback
         login_input = self.page.locator("[data-qa='login-input-username']")
         if login_input.count() == 0:
             login_input = self.page.locator("[data-qa='magritte-phone-input-national-number-input']")
@@ -50,7 +48,6 @@ class LoginPage(BasePage):
         self.page.wait_for_load_state("domcontentloaded")
         logger.info(f"[Auth] шаг 5: после «Войти с паролем», url={self.page.url}")
 
-        # wait_for с EXPECT-таймаутом — has_text использует SHORT (1s), этого мало
         try:
             self.locator.expected_text_page_password.wait_for(state="visible", timeout=self.timeouts.EXPECT)
         except Exception:
@@ -61,7 +58,6 @@ class LoginPage(BasePage):
         logger.info(f"[Auth] шаг 6: после ввода пароля, url={self.page.url}")
 
     def assert_login_on_page(self) -> None:
-        # Ждём появления одного из элементов авторизованного пользователя
         confirmed = False
         for locator in (self.locator.text_resume_and_profile, self.locator.text_response):
             try:

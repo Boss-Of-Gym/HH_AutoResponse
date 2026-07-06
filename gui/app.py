@@ -1,4 +1,3 @@
-"""Flask GUI server for AutoResponseHH. Entry point: python main.py --gui"""
 import json
 import os
 import queue as _queue
@@ -9,7 +8,6 @@ import uuid
 from pathlib import Path
 
 if getattr(sys, "frozen", False):
-    # exe-сборка: пользовательские данные лежат рядом с .exe
     ROOT = Path(sys.executable).parent
 else:
     ROOT = Path(__file__).parent.parent
@@ -23,11 +21,8 @@ app = Flask(__name__, static_folder=str(Path(__file__).parent / "static"), stati
 SETTINGS_FILE = ROOT / "settings.json"
 COVER_LETTERS_DIR = ROOT / "cover_letters"
 
-# {job_id: {'procs': [Popen, ...], 'n_workers': int}}
 _active_jobs: dict[str, dict] = {}
 
-
-# ── Defaults / load / save ───────────────────────────────────────────────────
 
 def _default_settings() -> dict:
     return {
@@ -123,8 +118,6 @@ def _load_settings() -> dict:
 def _save_settings(data: dict) -> None:
     SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-
-# ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -233,7 +226,7 @@ def api_export():
                 row.get("url", ""), row.get("title", ""), row.get("company", ""),
                 row.get("applied_at", ""), row.get("query", ""), row.get("status", ""),
             ])
-        output = "﻿" + buf.getvalue()  # BOM for Excel
+        output = "﻿" + buf.getvalue()
         return Response(
             output.encode("utf-8"),
             mimetype="text/csv; charset=utf-8-sig",
@@ -245,7 +238,6 @@ def api_export():
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
-    # Завершаем зомби-процессы, проверяем живые
     dead = [jid for jid, job in _active_jobs.items()
             if all(p.poll() is not None for p in job['procs'])]
     for jid in dead:
@@ -257,7 +249,7 @@ def api_run():
     mode = data.get("mode", "run")
     n_workers = max(1, min(int(data.get("threads", 1)), 8))
     if mode == "check-status":
-        n_workers = 1  # статусы всегда в один поток
+        n_workers = 1
 
     if getattr(sys, "frozen", False):
         base_cmd = [sys.executable]
@@ -369,8 +361,6 @@ def _find_python() -> str:
             return str(candidate)
     return sys.executable
 
-
-# ── Entry point ──────────────────────────────────────────────────────────────
 
 def run_gui(port: int = 5555) -> None:
     import threading
