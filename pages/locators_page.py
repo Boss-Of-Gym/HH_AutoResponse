@@ -12,7 +12,7 @@ class Login:
 
     @property
     def enter_button(self):
-        return self.page.get_by_role("button", name="Войти")
+        return self.page.locator("[data-qa='submit-button']")
 
     @property
     def login_number(self):
@@ -32,7 +32,7 @@ class Login:
 
     @property
     def password_button(self):
-        return self.page.get_by_role("button", name="Войти", exact=True)
+        return self.page.locator("[data-qa='submit-button']")
 
     @property
     def text_resume_and_profile(self):
