@@ -37,11 +37,13 @@ class LoginPage(BasePage):
         self.page.wait_for_load_state("domcontentloaded")
         logger.info(f"[Auth] шаг 3: после клика «Войти», url={self.page.url}")
 
-        # login_number: пробуем специфичный data-qa, иначе первый textbox
+        # login_number: email-поле → phone-поле → fallback
         login_input = self.page.locator("[data-qa='login-input-username']")
         if login_input.count() == 0:
+            login_input = self.page.locator("[data-qa='magritte-phone-input-national-number-input']")
+        if login_input.count() == 0:
             login_input = self.page.get_by_role("textbox").first
-        logger.info(f"[Auth] шаг 4: заполняем логин (найдено {login_input.count()} поле)")
+        logger.info(f"[Auth] шаг 4: заполняем логин (локатор={login_input})")
         self.fill(selector_or_locator=login_input, value=username)
 
         self.click(selector_or_locator=self.locator.button_enter_with_password)
