@@ -20,7 +20,7 @@ class Login:
 
     @property
     def password_textbox(self):
-        return self.page.get_by_role("textbox")
+        return self.page.get_by_role("textbox").first
 
     @property
     def button_enter_with_password(self):
