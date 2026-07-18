@@ -50,7 +50,7 @@ class AutoResponsePage(BasePage):
             names = ", ".join(self._cover_letters.keys())
             logger.info(f"Шаблоны писем загружены: {names}")
 
-    def auto_response(self, dry_run: bool = False, queries=None, worker_id: int = 0) -> None:
+    def auto_response(self, dry_run: bool = False, queries=None, worker_id: int = 0, workers: int = 1) -> None:
         if queries is None:
             queries = config.SearchConfig.QUERIES
         if dry_run:
@@ -92,7 +92,8 @@ class AutoResponsePage(BasePage):
                 )
                 break
 
-            count_page = 0
+            count_page = worker_id if workers > 1 else 0
+            page_step = workers if workers > 1 else 1
             exp_params = "&".join(f"experience={e}" for e in config.SearchConfig.EXPERIENCE)
 
             try:
@@ -371,7 +372,7 @@ class AutoResponsePage(BasePage):
                         )
                         break
 
-                    count_page += 1
+                    count_page += page_step
                     logger.info(f"  Страница {count_page + 1} | Всего откликов: {total_count}")
 
             except PlaywrightError as e:
