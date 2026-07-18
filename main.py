@@ -70,7 +70,7 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
     if workers > 1:
         logger.info(f"  Поток {worker_id+1} из {workers}")
     logger.info(f"  Запросов: {len(queries)} {queries}")
-    logger.info(f"  Регион: {config.SearchConfig.AREA} | Страниц: {config.SearchConfig.MAX_PAGES}")
+    logger.info(f"  Регион: {','.join(config.SearchConfig.AREAS)} | Страниц: {config.SearchConfig.MAX_PAGES}")
     logger.info(f"  Лимит сессии: {config.BotConfig.MAX_RESPONSES_PER_RUN} откликов")
     logger.info(f"  Задержка: {config.BotConfig.DELAY_MIN}-{config.BotConfig.DELAY_MAX}с")
     logger.info(f"  Хранить applied: {config.BotConfig.APPLIED_EXPIRY_DAYS} дней")
