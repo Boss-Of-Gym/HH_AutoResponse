@@ -42,7 +42,7 @@ def _default_settings() -> dict:
             "position": "QA Automation Engineer",
         },
         "search": {
-            "area": "113",
+            "area": ["113"],
             "max_pages": 99,
             "queries": ["Тестировщик", "QA engineer", "Автоматизатор тестирования", "QA automation"],
             "experience": ["between1And3", "between3And6"],
@@ -208,6 +208,85 @@ def api_history():
         return jsonify({"rows": rows, "total": total})
     except Exception as exc:
         return jsonify({"error": str(exc), "rows": [], "total": 0})
+
+
+@app.route("/api/manual-review", methods=["GET"])
+def api_manual_review():
+    try:
+        from utils import db as _db
+        _db.init_db()
+        items = _db.load_manual_review()
+        return jsonify({"items": items})
+    except Exception as exc:
+        return jsonify({"error": str(exc), "items": []})
+
+
+@app.route("/api/manual-review", methods=["DELETE"])
+def api_manual_review_delete():
+    data = request.get_json(force=True) or {}
+    url = data.get("url", "")
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    try:
+        from utils import db as _db
+        _db.delete_manual_review(url)
+        return jsonify({"ok": True})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/schedule/register", methods=["POST"])
+def api_schedule_register():
+    try:
+        s = _load_settings()
+        run_time = s.get("schedule", {}).get("daily_run_time", "08:00")
+        if getattr(sys, "frozen", False):
+            cmd_run = f'"{sys.executable}"'
+        else:
+            python = _find_python()
+            cmd_run = f'"{python}" "{ROOT / "main.py"}" --run'
+        tn = "AutoResponseHH_DailyRun"
+        result = subprocess.run(
+            f'schtasks /Create /F /TN "{tn}" /TR {cmd_run} /SC DAILY /ST {run_time} /RL HIGHEST',
+            shell=True, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if result.returncode == 0:
+            return jsonify({"ok": True, "msg": f"Задача зарегистрирована на {run_time}"})
+        return jsonify({"ok": False, "msg": result.stdout + result.stderr}), 500
+    except Exception as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 500
+
+
+@app.route("/api/schedule/unregister", methods=["POST"])
+def api_schedule_unregister():
+    try:
+        tn = "AutoResponseHH_DailyRun"
+        result = subprocess.run(
+            f'schtasks /Delete /F /TN "{tn}"',
+            shell=True, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        return jsonify({"ok": True, "msg": "Задача удалена" if result.returncode == 0 else "Задача не найдена"})
+    except Exception as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 500
+
+
+@app.route("/api/schedule/status", methods=["GET"])
+def api_schedule_status():
+    try:
+        tn = "AutoResponseHH_DailyRun"
+        result = subprocess.run(
+            f'schtasks /Query /TN "{tn}" /FO LIST',
+            shell=True, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if result.returncode == 0:
+            next_run = ""
+            for line in result.stdout.splitlines():
+                if "Следующее время запуска" in line or "Next Run Time" in line:
+                    next_run = line.split(":", 1)[-1].strip()
+            return jsonify({"registered": True, "next_run": next_run})
+        return jsonify({"registered": False})
+    except Exception as exc:
+        return jsonify({"registered": False, "error": str(exc)})
 
 
 @app.route("/api/export", methods=["GET"])

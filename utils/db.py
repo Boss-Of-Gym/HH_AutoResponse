@@ -31,7 +31,10 @@ def init_db() -> None:
                 query       TEXT DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS manual_review (
-                url TEXT PRIMARY KEY
+                url        TEXT PRIMARY KEY,
+                title      TEXT DEFAULT '',
+                company    TEXT DEFAULT '',
+                added_at   TEXT DEFAULT ''
             );
             CREATE TABLE IF NOT EXISTS response_log (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,6 +58,11 @@ def init_db() -> None:
                 value TEXT DEFAULT ''
             );
         """)
+        for col, typedef in [('title', 'TEXT DEFAULT ""'), ('company', 'TEXT DEFAULT ""'), ('added_at', 'TEXT DEFAULT ""')]:
+            try:
+                conn.execute(f"ALTER TABLE manual_review ADD COLUMN {col} {typedef}")
+            except Exception:
+                pass
     _migrate_legacy()
 
 
@@ -148,20 +156,32 @@ def save_applied(applied: dict) -> None:
         )
 
 
-def load_manual_review() -> set:
+def load_manual_review() -> list:
     with _connect() as conn:
-        rows = conn.execute("SELECT url FROM manual_review").fetchall()
-    return {row["url"] for row in rows}
+        rows = conn.execute(
+            "SELECT url, title, company, added_at FROM manual_review ORDER BY added_at DESC"
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
-def save_manual_review(urls: set) -> None:
-    if not urls:
+def save_manual_review(items) -> None:
+    if not items:
         return
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if items and isinstance(next(iter(items), None), str):
+        rows = [(u, '', '', now) for u in items]
+    else:
+        rows = [(i.get('url', ''), i.get('title', ''), i.get('company', ''), i.get('added_at', now)) for i in items if i.get('url')]
     with _connect() as conn:
         conn.executemany(
-            "INSERT OR IGNORE INTO manual_review (url) VALUES (?)",
-            [(u,) for u in urls],
+            "INSERT OR IGNORE INTO manual_review (url, title, company, added_at) VALUES (?,?,?,?)",
+            rows
         )
+
+
+def delete_manual_review(url: str) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM manual_review WHERE url = ?", (url,))
 
 
 def log_response(url: str, title: str, company: str, query: str) -> None:

@@ -33,6 +33,14 @@ def _s(*keys, default=None):
     return v
 
 
+def _parse_areas(raw) -> tuple:
+    if isinstance(raw, list):
+        parts = [str(a).strip() for a in raw if str(a).strip()]
+    else:
+        parts = [a.strip() for a in str(raw or "113").split(",") if a.strip()]
+    return tuple(parts) if parts else ("113",)
+
+
 @dataclass(frozen=True)
 class Urls:
     BASE_URL: str = "https://hh.ru/"
@@ -66,7 +74,8 @@ class ProfileConfig:
 
 @dataclass(frozen=True)
 class SearchConfig:
-    AREA: str = (_s("search", "area") or "113")
+    AREAS: tuple = _parse_areas(_s("search", "area"))
+    AREA: str = _parse_areas(_s("search", "area"))[0]
     EXPERIENCE: tuple = tuple(
         _s("search", "experience") or ["between1And3", "between3And6"]
     )

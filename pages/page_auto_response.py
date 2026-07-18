@@ -77,7 +77,7 @@ class AutoResponsePage(BasePage):
 
             logger.info(
                 f"=== Запрос: '{query}' | "
-                f"Регион: {config.SearchConfig.AREA} | "
+                f"Регион: {','.join(config.SearchConfig.AREAS)} | "
                 f"Опыт: {config.SearchConfig.EXPERIENCE} ==="
             )
 
@@ -103,7 +103,7 @@ class AutoResponsePage(BasePage):
                     url = (
                         f"{SEARCH_URL}"
                         f"?text={urllib.parse.quote(query)}"
-                        f"&area={config.SearchConfig.AREA}"
+                        f"&{'&'.join(f'area={a}' for a in config.SearchConfig.AREAS)}"
                         f"&{exp_params}"
                         f"&order_by=relevance"
                         f"&page={count_page}"
@@ -220,7 +220,7 @@ class AutoResponsePage(BasePage):
                                 if self.locator.heading_response_answer_question.is_visible():
                                     logger.info(f"  Вопросы работодателя (ручной отклик): {vacancy_url}")
                                     if vacancy_url:
-                                        manual_review.add(vacancy_url)
+                                        manual_review.append({'url': vacancy_url, 'title': title or '', 'company': company or ''})
                                         self._save_manual_review(manual_review)
                                     stats["manual_review"] += 1
                                     if self.locator.modal_close_button.is_visible():
@@ -294,8 +294,9 @@ class AutoResponsePage(BasePage):
                                     stats["responses"] += 1
                                     response_sent = True
 
-                                    if company:
-                                        company_counts[company] = company_counts.get(company, 0) + 1
+                                    company_key = company.strip().lower() if company else ''
+                                    if company_key:
+                                        company_counts[company_key] = company_counts.get(company_key, 0) + 1
 
                                     try:
                                         self.page.locator("[data-qa='modal-overlay']").wait_for(
@@ -330,7 +331,8 @@ class AutoResponsePage(BasePage):
                                         self._log_response_csv(vacancy_url, title, company, query)
 
                                 if dry_run and company:
-                                    company_counts[company] = company_counts.get(company, 0) + 1
+                                    company_key = company.strip().lower()
+                                    company_counts[company_key] = company_counts.get(company_key, 0) + 1
 
                             except Exception as modal_err:
                                 if self._is_response_limit_reached():
@@ -354,7 +356,8 @@ class AutoResponsePage(BasePage):
                                     logger.warning("Тост 'Отклик отправлен' не появился")
                         else:
                             stats["redirects"] += 1
-                            logger.debug(f"  Редирект при отклике: {title or vacancy_url}")
+                            logger.info(f"  Редирект (вопросы): {title or vacancy_url} | {company or ''}")
+                            manual_review.append({'url': vacancy_url, 'title': title or '', 'company': company or ''})
                             search_page_url = self._safe_return_to_search(search_page_url)
                             skip_count += 1
 
@@ -477,7 +480,8 @@ class AutoResponsePage(BasePage):
                 return False
 
         max_per = config.BotConfig.MAX_PER_COMPANY
-        if max_per > 0 and company_counts.get(company, 0) >= max_per:
+        company_key = company.strip().lower() if company else ''
+        if max_per > 0 and company_counts.get(company_key, 0) >= max_per:
             return False
 
         return True
@@ -660,7 +664,7 @@ class AutoResponsePage(BasePage):
         return False
 
     def _handle_limit_reached(
-        self, applied: dict, manual_review: set, query_stats: dict,
+        self, applied: dict, manual_review: list, query_stats: dict,
         total_count: int, started_at: datetime, company_counts: dict
     ) -> None:
         db.save_limit_reached(datetime.now())
@@ -696,10 +700,10 @@ class AutoResponsePage(BasePage):
                datetime.fromisoformat(meta["applied_at"]) >= cutoff
         }
 
-    def _load_manual_review(self) -> set:
+    def _load_manual_review(self) -> list:
         return db.load_manual_review()
 
-    def _save_manual_review(self, manual_review: set) -> None:
+    def _save_manual_review(self, manual_review: list) -> None:
         db.save_manual_review(manual_review)
 
     def _safe_return_to_search(self, search_page_url: str) -> str:
