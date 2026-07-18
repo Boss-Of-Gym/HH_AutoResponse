@@ -1150,7 +1150,7 @@ function populateAll() {
   setVal('cred-password', c.password || '');
   setVal('browser-locale', br.locale || 'ru-RU');
   setVal('browser-tz', br.timezone || 'Europe/Moscow');
-  setChecked('browser-headless', br.headless !== false);
+  setChecked('browser-headless', !br.headless);
 
   setVal('prof-name', p.name || '');
   setVal('prof-pos', p.position || '');
@@ -1248,7 +1248,7 @@ function collectSettings() {
     browser: {
       locale: val('browser-locale'),
       timezone: val('browser-tz'),
-      headless: checked('browser-headless'),
+      headless: !checked('browser-headless'),
     },
   };
 }
