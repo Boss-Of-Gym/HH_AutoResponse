@@ -371,6 +371,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
     <div class="nav-item active" data-sec="dashboard"><span class="ico">◈</span>Сводка</div>
     <div class="nav-item" data-sec="run"><span class="ico">▶</span>Запуск</div>
     <div class="nav-item" data-sec="history"><span class="ico">☷</span>История</div>
+    <div class="nav-item" data-sec="manual"><span class="ico">✎</span>Ручной просмотр</div>
     <div class="nav-label">Настройки</div>
     <div class="nav-item" data-sec="search"><span class="ico">⊕</span>Поиск</div>
     <div class="nav-item" data-sec="bot"><span class="ico">◎</span>Бот</div>
@@ -516,6 +517,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
       </div>
     </div>
 
+    <!-- ══ MANUAL REVIEW ══ -->
+    <div class="section" id="s-manual">
+      <div class="card">
+        <div class="card-title">Вакансии с вопросами — требуют ручного отклика</div>
+        <div class="form-hint" style="margin-bottom:12px">Бот перенаправил на страницу с вопросами. Откройте ссылку, ответьте на вопросы и откликнитесь вручную.</div>
+        <div id="manual-list" style="display:flex;flex-direction:column;gap:8px">
+          <div style="color:var(--t2);font-size:13px" id="manual-empty">Нет вакансий для ручного просмотра</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ SEARCH ══ -->
     <div class="section" id="s-search">
       <div class="card">
@@ -524,10 +536,41 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
           <div class="form-group">
             <div class="lbl-row">
               <label class="form-label">Регион поиска</label>
-              <i class="info-icon" data-tip="Числовой код региона HH.ru. Популярные: 1 — Москва, 2 — Санкт-Петербург, 113 — вся Россия, 88 — Новосибирск. Чтобы найти код своего города, откройте любую вакансию в браузере и посмотрите параметр area= в URL.">ⓘ</i>
+              <i class="info-icon" data-tip="Можно выбрать несколько регионов. Поиск ведётся по всем выбранным.">ⓘ</i>
             </div>
-            <input id="search-area" class="form-input" type="text" placeholder="113 = Россия, 1 = Москва" oninput="scheduleSave()">
-            <div class="form-hint">1 — Москва · 2 — СПб · 113 — Россия</div>
+            <div id="area-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:6px">
+              <select id="area-select" class="form-input" style="flex:1" onchange="addAreaFromSelect()">
+                <option value="">— выбрать регион —</option>
+                <optgroup label="Россия">
+                  <option value="113">🇷🇺 Вся Россия</option>
+                  <option value="1">Москва</option>
+                  <option value="2">Санкт-Петербург</option>
+                  <option value="3">Екатеринбург</option>
+                  <option value="4">Новосибирск</option>
+                  <option value="88">Казань</option>
+                  <option value="66">Нижний Новгород</option>
+                  <option value="104">Челябинск</option>
+                  <option value="72">Пермь</option>
+                  <option value="99">Уфа</option>
+                  <option value="76">Ростов-на-Дону</option>
+                  <option value="78">Самара</option>
+                  <option value="53">Красноярск</option>
+                  <option value="68">Омск</option>
+                  <option value="79">Саратов</option>
+                  <option value="26">Воронеж</option>
+                  <option value="54">Краснодар</option>
+                </optgroup>
+                <optgroup label="СНГ">
+                  <option value="16">🇧🇾 Беларусь</option>
+                  <option value="40">🇰🇿 Казахстан</option>
+                  <option value="5">🇺🇦 Украина</option>
+                </optgroup>
+              </select>
+              <input id="area-custom" class="form-input" type="text" placeholder="Код вручную" style="width:110px" onkeydown="if(event.key==='Enter')addAreaCustom()">
+              <button class="btn-sm" onclick="addAreaCustom()" style="padding:0 10px;font-size:12px">+</button>
+            </div>
+            <div class="form-hint">Коды: 113=Россия, 1=Москва, 2=СПб, 16=Беларусь, 40=Казахстан</div>
           </div>
           <div class="form-group">
             <div class="lbl-row">
@@ -889,9 +932,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
               <input id="sched-time" class="form-input" type="time" value="08:00" oninput="scheduleSave()">
             </div>
           </div>
-          <div style="background:var(--surf2);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--t2)">
-            <strong style="color:var(--text)">Планировщик задач Windows</strong> — надёжнее встроенного расписания:<br>
-            <code class="code-hint" style="font-size:11px">schtasks /create /tn "AutoResponseHH" /tr "python main.py" /sc daily /st 08:00</code>
+          <div style="margin-top:14px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn-sm btn-primary" id="sched-reg-btn" onclick="scheduleRegister()" style="font-size:12px;padding:6px 14px">
+                Зарегистрировать в планировщике Windows
+              </button>
+              <button class="btn-sm" id="sched-unreg-btn" onclick="scheduleUnregister()" style="font-size:12px;padding:6px 14px">
+                Удалить из планировщика
+              </button>
+            </div>
+            <div id="sched-status" style="margin-top:8px;font-size:12px;color:var(--t2)"></div>
           </div>
         </div>
       </div>
@@ -1025,7 +1075,7 @@ let _histPage = 0, _histDebounce = null, _histTotal = 0;
 const HIST_PAGE_SIZE = 50;
 
 const SEC_TITLES = {
-  dashboard:'Сводка', run:'Запуск бота', history:'История откликов', search:'Поиск', bot:'Бот',
+  dashboard:'Сводка', run:'Запуск бота', history:'История откликов', manual:'Ручной просмотр', search:'Поиск', bot:'Бот',
   resume:'Резюме', letters:'Письма', filters:'Фильтры',
   schedule:'Расписание', account:'Аккаунт'
 };
@@ -1077,7 +1127,9 @@ function switchSection(sec) {
   if (sbSec) sbSec.textContent = title;
   if (sec === 'dashboard') setTimeout(drawChart, 60);
   if (sec === 'history') loadHistory();
+  if (sec === 'manual') loadManualReview();
   if (sec === 'letters') setTimeout(updatePreview, 50);
+  if (sec === 'schedule') checkScheduleStatus();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1098,7 +1150,7 @@ function populateAll() {
   setVal('cred-password', c.password || '');
   setVal('browser-locale', br.locale || 'ru-RU');
   setVal('browser-tz', br.timezone || 'Europe/Moscow');
-  setChecked('browser-headless', br.headless !== false);
+  setChecked('browser-headless', !br.headless);
 
   setVal('prof-name', p.name || '');
   setVal('prof-pos', p.position || '');
@@ -1110,7 +1162,8 @@ function populateAll() {
   setVal('prof-github', p.github || '');
   setVal('prof-portfolio', p.portfolio || '');
 
-  setVal('search-area', sr.area || '113');
+  const areas = Array.isArray(sr.area) ? sr.area : String(sr.area || '113').split(',').map(a=>a.trim()).filter(Boolean);
+  renderAreaChips(areas);
   setVal('search-maxpages', sr.max_pages || 99);
   renderTags('queries-cnt', 'q-in', sr.queries || []);
   const expChecks = document.querySelectorAll('#experience-group input[type=checkbox]');
@@ -1160,7 +1213,7 @@ function collectSettings() {
       portfolio: val('prof-portfolio'),
     },
     search: {
-      area: val('search-area'),
+      area: getAreaList(),
       max_pages: parseInt(val('search-maxpages')) || 99,
       queries: getTagList('queries-cnt'),
       experience: getCheckedValues('#experience-group input[type=checkbox]'),
@@ -1195,7 +1248,7 @@ function collectSettings() {
     browser: {
       locale: val('browser-locale'),
       timezone: val('browser-tz'),
-      headless: checked('browser-headless'),
+      headless: !checked('browser-headless'),
     },
   };
 }
@@ -1221,6 +1274,54 @@ function showBadge() {
   const b = document.getElementById('save-badge');
   b.classList.add('show');
   setTimeout(() => b.classList.remove('show'), 1800);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCHEDULE (Windows schtasks)
+// ═══════════════════════════════════════════════════════════════
+async function scheduleRegister() {
+  await scheduleSave();
+  const btn = document.getElementById('sched-reg-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/schedule/register', {method:'POST'});
+    const d = await r.json();
+    const st = document.getElementById('sched-status');
+    if (st) st.textContent = d.ok ? '✓ ' + d.msg : '✗ ' + d.msg;
+    if (st) st.style.color = d.ok ? 'var(--green)' : 'var(--red)';
+    checkScheduleStatus();
+  } catch(e) {
+    const st = document.getElementById('sched-status');
+    if (st) st.textContent = 'Ошибка: ' + e;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function scheduleUnregister() {
+  try {
+    const r = await fetch('/api/schedule/unregister', {method:'POST'});
+    const d = await r.json();
+    const st = document.getElementById('sched-status');
+    if (st) st.textContent = d.ok ? '✓ ' + d.msg : '✗ ' + d.msg;
+    checkScheduleStatus();
+  } catch(e) {}
+}
+
+async function checkScheduleStatus() {
+  try {
+    const r = await fetch('/api/schedule/status');
+    const d = await r.json();
+    const st = document.getElementById('sched-status');
+    if (!st) return;
+    if (d.registered) {
+      st.textContent = '✓ Задача зарегистрирована' + (d.next_run ? ' · следующий запуск: ' + d.next_run : '');
+      st.style.color = 'var(--green)';
+    } else {
+      st.textContent = 'Задача не зарегистрирована';
+      st.style.color = 'var(--t2)';
+    }
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1684,6 +1785,52 @@ function exportCSV() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MANUAL REVIEW
+// ═══════════════════════════════════════════════════════════════
+async function loadManualReview() {
+  try {
+    const r = await fetch('/api/manual-review');
+    const data = await r.json();
+    const items = data.items || [];
+    const container = document.getElementById('manual-list');
+    const empty = document.getElementById('manual-empty');
+    if (!container) return;
+    container.querySelectorAll('.manual-item').forEach(el => el.remove());
+    if (items.length === 0) {
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'manual-item';
+      div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2,var(--bg2,var(--surf2)));border-radius:8px;';
+      div.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <a href="${escAttr(item.url)}" target="_blank" style="font-weight:600;color:var(--text);text-decoration:none;font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(item.url)}">${escHtml(item.title || item.url)}</a>
+          <div style="font-size:11px;color:var(--t2);margin-top:2px">${escHtml(item.company || '')}${item.added_at ? ' · ' + item.added_at.substring(0,10) : ''}</div>
+        </div>
+        <button onclick="deleteManualItem(this,'${encodeURIComponent(item.url)}')" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--t2);font-size:11px">✕ Убрать</button>
+      `;
+      container.appendChild(div);
+    });
+  } catch(e) { console.error('loadManualReview:', e); }
+}
+
+async function deleteManualItem(btn, encodedUrl) {
+  const url = decodeURIComponent(encodedUrl);
+  try {
+    await fetch('/api/manual-review', {method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({url})});
+    btn.closest('.manual-item').remove();
+    const remaining = document.querySelectorAll('.manual-item').length;
+    if (remaining === 0) {
+      const empty = document.getElementById('manual-empty');
+      if (empty) empty.style.display = '';
+    }
+  } catch(e) { console.error('deleteManualItem:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STATUS BAR
 // ═══════════════════════════════════════════════════════════════
 function updateStatusBar(applied, running) {
@@ -1831,6 +1978,49 @@ function updateFilterChips() {
     '<span class="chip ' + (apiOn ? 'chip-green' : 'chip-blue') + '">Предфильтрация через API: ' + (apiOn ? 'вкл' : 'выкл') + '</span>' +
     '<span class="chip ' + (sal > 0 ? 'chip-green' : 'chip-amber') + '">Мин. зарплата: ' + (sal > 0 ? sal.toLocaleString() + ' ₽' : 'не задана') + '</span>' +
     '<span class="chip ' + (scoring ? 'chip-green' : 'chip-blue') + '">Оценка вакансий: ' + (scoring ? 'вкл' : 'выкл') + '</span>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AREA (multi-region)
+// ═══════════════════════════════════════════════════════════════
+const AREA_NAMES = {"113":"Вся Россия","1":"Москва","2":"Санкт-Петербург","3":"Екатеринбург","4":"Новосибирск","88":"Казань","66":"Нижний Новгород","104":"Челябинск","72":"Пермь","99":"Уфа","76":"Ростов-на-Дону","78":"Самара","53":"Красноярск","68":"Омск","79":"Саратов","26":"Воронеж","54":"Краснодар","16":"Беларусь","40":"Казахстан","5":"Украина"};
+let _selectedAreas = [];
+
+function renderAreaChips(areas) {
+  _selectedAreas = [...new Set(areas.map(String))];
+  const c = document.getElementById('area-chips');
+  if (!c) return;
+  c.innerHTML = '';
+  _selectedAreas.forEach(a => {
+    const chip = document.createElement('span');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--red);color:#fff;border-radius:12px;font-size:12px;cursor:default';
+    chip.innerHTML = escHtml(AREA_NAMES[a] || 'Код ' + a) + ' <span style="cursor:pointer;opacity:.8" onclick="removeArea(\'' + a + '\')">×</span>';
+    c.appendChild(chip);
+  });
+}
+
+function addAreaFromSelect() {
+  const sel = document.getElementById('area-select');
+  if (!sel || !sel.value) return;
+  const v = sel.value; sel.value = '';
+  if (!_selectedAreas.includes(v)) { _selectedAreas.push(v); renderAreaChips(_selectedAreas); scheduleSave(); }
+}
+
+function addAreaCustom() {
+  const inp = document.getElementById('area-custom');
+  if (!inp || !inp.value.trim()) return;
+  const v = inp.value.trim(); inp.value = '';
+  if (!_selectedAreas.includes(v)) { _selectedAreas.push(v); renderAreaChips(_selectedAreas); scheduleSave(); }
+}
+
+function removeArea(a) {
+  _selectedAreas = _selectedAreas.filter(x => x !== a);
+  renderAreaChips(_selectedAreas);
+  scheduleSave();
+}
+
+function getAreaList() {
+  return _selectedAreas.length ? _selectedAreas : ['113'];
 }
 
 // ═══════════════════════════════════════════════════════════════
