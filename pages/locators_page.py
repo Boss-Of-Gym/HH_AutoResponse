@@ -121,7 +121,9 @@ class AutoResponse:
 
     @property
     def button_add_cover_letter(self):
-        return self.page.locator("[data-qa='add-cover-letter']")
+        # 'add-cover-letter' — модалка на той же странице; 'vacancy-response-letter-toggle' —
+        # переход на отдельную страницу (напр. с доп. вопросами). На экране в моменте есть только один.
+        return self.page.locator("[data-qa='add-cover-letter'], [data-qa='vacancy-response-letter-toggle']")
 
     @property
     def textbox_cover_letter(self):

@@ -57,6 +57,13 @@ def init_db() -> None:
                 key   TEXT PRIMARY KEY,
                 value TEXT DEFAULT ''
             );
+            CREATE TABLE IF NOT EXISTS ai_answers (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT NOT NULL,
+                vacancy_url TEXT DEFAULT '',
+                question    TEXT DEFAULT '',
+                answer      TEXT DEFAULT ''
+            );
         """)
         for col, typedef in [('title', 'TEXT DEFAULT ""'), ('company', 'TEXT DEFAULT ""'), ('added_at', 'TEXT DEFAULT ""')]:
             try:
@@ -190,6 +197,14 @@ def log_response(url: str, title: str, company: str, query: str) -> None:
             "INSERT INTO response_log (timestamp, query, url, title, company) "
             "VALUES (?, ?, ?, ?, ?)",
             (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), query, url, title, company),
+        )
+
+
+def save_ai_answer(vacancy_url: str, question: str, answer: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO ai_answers (timestamp, vacancy_url, question, answer) VALUES (?, ?, ?, ?)",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), vacancy_url, question, answer),
         )
 
 

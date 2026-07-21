@@ -12,7 +12,8 @@
     "key_skills": "Python, Playwright, Selenium, pytest",
     "github": "https://github.com/your-username",
     "portfolio": "",
-    "position": "QA Automation Engineer"
+    "position": "QA Automation Engineer",
+    "resume_summary": "Senior QA Automation Engineer, 5 лет в тестировании, последние 3 года — автоматизация на Python/Playwright. Опыт CI/CD, API-тестирования, менторства junior-специалистов."
   },
   "search": {
     "area": "113",
@@ -63,5 +64,13 @@
     "headless": false,
     "locale": "ru-RU",
     "timezone": "Europe/Moscow"
+  },
+  "ai": {
+    "enabled": false,
+    "provider": "ollama",
+    "model": "qwen2.5:7b",
+    "ollama_url": "http://localhost:11434",
+    "gemini_api_key": "",
+    "confidence_threshold": 0.7
   }
 }

@@ -40,6 +40,7 @@ def _default_settings() -> dict:
             "github": "",
             "portfolio": "",
             "position": "QA Automation Engineer",
+            "resume_summary": "",
         },
         "search": {
             "area": ["113"],
@@ -96,6 +97,14 @@ def _default_settings() -> dict:
             "headless": False,
             "locale": "ru-RU",
             "timezone": "Europe/Moscow",
+        },
+        "ai": {
+            "enabled": False,
+            "provider": "ollama",
+            "model": "qwen2.5:7b",
+            "ollama_url": "http://localhost:11434",
+            "gemini_api_key": "",
+            "confidence_threshold": 0.7,
         },
     }
 

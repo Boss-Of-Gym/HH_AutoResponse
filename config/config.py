@@ -70,6 +70,7 @@ class ProfileConfig:
     GITHUB: str = (_s("profile", "github") or "")
     PORTFOLIO: str = (_s("profile", "portfolio") or "")
     POSITION: str = (_s("profile", "position") or "QA Engineer")
+    RESUME_SUMMARY: str = (_s("profile", "resume_summary") or "")
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,17 @@ class BrowserConfig:
 
 
 @dataclass(frozen=True)
+class AIConfig:
+    ENABLED: bool = bool(_s("ai", "enabled", default=False))
+    PROVIDER: str = (_s("ai", "provider") or "ollama")
+    MODEL: str = (_s("ai", "model") or "qwen2.5:7b")
+    OLLAMA_URL: str = (_s("ai", "ollama_url") or "http://localhost:11434")
+    GEMINI_API_KEY: str = (_s("ai", "gemini_api_key") or "")
+    CONFIDENCE_THRESHOLD: float = float(_s("ai", "confidence_threshold") or 0.7)
+    TIMEOUT: float = float(_s("ai", "timeout") or 60.0)
+
+
+@dataclass(frozen=True)
 class Config:
     Urls: Urls = Urls()
     Timeouts: Timeouts = Timeouts()
@@ -172,9 +184,11 @@ class Config:
     Blacklist: BlacklistConfig = BlacklistConfig()
     ResumeRaise: ResumeRaiseConfig = ResumeRaiseConfig()
     Browser: BrowserConfig = BrowserConfig()
+    AI: AIConfig = AIConfig()
 
 
 config = Config()
 
 Profile = ProfileConfig()
 Browser = BrowserConfig()
+AI = AIConfig()

@@ -44,14 +44,11 @@ def run(dry_run: bool = False, worker_id: int = 0, workers: int = 1) -> None:
                 remaining = timedelta(hours=24) - elapsed
                 hours = int(remaining.total_seconds() // 3600)
                 minutes = int((remaining.total_seconds() % 3600) // 60)
-                sep = "=" * 55
-                logger.warning(sep)
-                logger.warning("  ЛИМИТ ОТКЛИКОВ HH.RU ИСЧЕРПАН")
-                logger.warning(f"  Лимит был достигнут: {limit_at.strftime('%Y-%m-%d %H:%M')}")
-                logger.warning(f"  Следующий запуск возможен через: {hours}ч {minutes}мин")
-                logger.warning("  В течение 24 часов не более 200 откликов.")
-                logger.warning(sep)
-                return
+                logger.warning(
+                    f"  Лимит откликов был зафиксирован {limit_at.strftime('%Y-%m-%d %H:%M')} "
+                    f"(до полных 24ч ещё ~{hours}ч {minutes}мин) — запускаемся всё равно, "
+                    "реальный статус лимита проверится на hh.ru при первом же отклике."
+                )
 
     all_queries = config.SearchConfig.QUERIES
     queries = all_queries
