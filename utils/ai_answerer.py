@@ -13,6 +13,10 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
+# Локальные 7B-модели (в т.ч. qwen2.5) иногда съезжают на китайский/японский/корейский
+# посреди ответа на русском — отсеиваем такие ответы, чтобы не отправить их работодателю.
+_FOREIGN_SCRIPT = re.compile(r"[一-鿿぀-ヿ가-힯]")
+
 
 def is_enabled() -> bool:
     return config.AI.ENABLED
@@ -131,6 +135,10 @@ def ask(question: str, options: list[str] | None = None) -> tuple[str, float]:
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0))))
     except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
         logger.warning(f"ai_answerer: не удалось получить ответ от {config.AI.PROVIDER} ({exc})")
+        return "", 0.0
+
+    if _FOREIGN_SCRIPT.search(answer):
+        logger.warning(f"ai_answerer: модель съехала на другой алфавит, отклоняю ответ: {answer[:80]!r}")
         return "", 0.0
 
     if options:
