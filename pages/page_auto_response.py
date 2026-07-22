@@ -374,85 +374,101 @@ class AutoResponsePage(BasePage):
                                 except PlaywrightTimeoutError:
                                     logger.warning("Тост 'Отклик отправлен' не появился")
                         else:
-                            # Полный переход на отдельную страницу с вопросами (не модалка).
-                            # Та же разметка task-body/task-question, что и в модалке —
-                            # пробуем ответить ИИ и здесь, прежде чем сдаваться в manual_review.
-                            ai_answered = False
+                            response_sent = False
                             try:
-                                ai_answered = question_filler.try_ai_answer(self.page, vacancy_url)
-                            except Exception as ai_exc:
-                                logger.warning(f"  Ошибка ИИ-ответа на вопросы (отдельная страница): {ai_exc}")
+                                # Полный переход на отдельную страницу с вопросами (не модалка).
+                                # Та же разметка task-body/task-question, что и в модалке —
+                                # пробуем ответить ИИ и здесь, прежде чем сдаваться в manual_review.
                                 ai_answered = False
+                                try:
+                                    ai_answered = question_filler.try_ai_answer(self.page, vacancy_url)
+                                except Exception as ai_exc:
+                                    logger.warning(f"  Ошибка ИИ-ответа на вопросы (отдельная страница): {ai_exc}")
+                                    ai_answered = False
 
-                            if not ai_answered:
-                                stats["redirects"] += 1
-                                logger.info(f"  Редирект (вопросы): {title or vacancy_url} | {company or ''}")
-                                manual_review.append({'url': vacancy_url, 'title': title or '', 'company': company or ''})
-                                self._save_manual_review(manual_review)
-                                search_page_url = self._safe_return_to_search(search_page_url)
-                                skip_count += 1
-                            else:
-                                stats["ai_answered"] = stats.get("ai_answered", 0) + 1
-                                logger.info(f"  Вопросы работодателя (отдельная страница) — отвечено ИИ: {vacancy_url}")
+                                if not ai_answered:
+                                    stats["redirects"] += 1
+                                    logger.info(f"  Редирект (вопросы): {title or vacancy_url} | {company or ''}")
+                                    manual_review.append({'url': vacancy_url, 'title': title or '', 'company': company or ''})
+                                    self._save_manual_review(manual_review)
+                                    search_page_url = self._safe_return_to_search(search_page_url)
+                                    skip_count += 1
+                                else:
+                                    stats["ai_answered"] = stats.get("ai_answered", 0) + 1
+                                    logger.info(f"  Вопросы работодателя (отдельная страница) — отвечено ИИ: {vacancy_url}")
 
-                                if self.locator.button_add_cover_letter.is_visible():
-                                    self.click(self.locator.button_add_cover_letter)
-                                    time.sleep(0.5)
-                                cover_tpl = self._get_cover_letter_for(title)
-                                if cover_tpl and self.locator.textbox_cover_letter.is_visible():
-                                    letter = self._format_cover_letter(cover_tpl, title, company)
-                                    self.fill(self.locator.textbox_cover_letter, letter)
+                                    if self.locator.button_add_cover_letter.is_visible():
+                                        self.click(self.locator.button_add_cover_letter)
+                                        time.sleep(0.5)
+                                    cover_tpl = self._get_cover_letter_for(title)
+                                    if cover_tpl and self.locator.textbox_cover_letter.is_visible():
+                                        letter = self._format_cover_letter(cover_tpl, title, company)
+                                        self.fill(self.locator.textbox_cover_letter, letter)
 
+                                    if self._is_response_limit_reached():
+                                        self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
+                                        return
+
+                                    if dry_run:
+                                        logger.info(
+                                            f"  [DRY-RUN] ИИ заполнил бы вопросы (отдельная страница) для "
+                                            f"{title or vacancy_url} — отклик НЕ отправляется"
+                                        )
+                                        total_count += 1
+                                        stats["responses"] += 1
+                                        response_sent = True
+                                        search_page_url = self._safe_return_to_search(search_page_url)
+                                    else:
+                                        btn_submit = self.locator.modal_window_button_response
+                                        clicked = False
+                                        if btn_submit.count() > 0:
+                                            try:
+                                                btn_submit.click(timeout=8000)
+                                                clicked = True
+                                            except Exception as e:
+                                                logger.warning(f"  Клик «Откликнуться» не сработал (отдельная страница): {e}")
+                                        else:
+                                            logger.warning(f"  Кнопка «Откликнуться» отсутствует на странице вопросов — пропускаем '{title}'")
+
+                                        if clicked:
+                                            time.sleep(0.5)
+                                            total_count += 1
+                                            stats["responses"] += 1
+                                            response_sent = True
+                                            company_key = company.strip().lower() if company else ''
+                                            if company_key:
+                                                company_counts[company_key] = company_counts.get(company_key, 0) + 1
+                                            if vacancy_url:
+                                                applied[vacancy_url] = {
+                                                    "title": title,
+                                                    "company": company,
+                                                    "applied_at": datetime.now().isoformat(timespec="seconds"),
+                                                    "query": query,
+                                                }
+                                            n = config.BotConfig.SAVE_EVERY_N
+                                            if n <= 1 or total_count % n == 0:
+                                                self._save_applied(applied)
+                                            if config.BotConfig.LOG_RESPONSES_CSV and vacancy_url:
+                                                self._log_response_csv(vacancy_url, title, company, query)
+                                            logger.info(
+                                                f"Отклик #{total_count} | {title or '?'} | {company or '?'} "
+                                                f"('{query}', стр.{count_page + 1})"
+                                            )
+                                        else:
+                                            skip_count += 1
+                                        search_page_url = self._safe_return_to_search(search_page_url)
+                            except Exception as redirect_err:
                                 if self._is_response_limit_reached():
                                     self._handle_limit_reached(applied, manual_review, query_stats, total_count, started_at, company_counts)
                                     return
-
-                                if dry_run:
-                                    logger.info(
-                                        f"  [DRY-RUN] ИИ заполнил бы вопросы (отдельная страница) для "
-                                        f"{title or vacancy_url} — отклик НЕ отправляется"
-                                    )
-                                    total_count += 1
-                                    stats["responses"] += 1
+                                logger.warning(f"  Ошибка на странице вопросов (отдельная страница): {redirect_err}. Пропускаем.")
+                                stats["errors"] += 1
+                                if not response_sent:
+                                    skip_count += 1
+                                try:
                                     search_page_url = self._safe_return_to_search(search_page_url)
-                                else:
-                                    btn_submit = self.locator.modal_window_button_response
-                                    clicked = False
-                                    if btn_submit.count() > 0:
-                                        try:
-                                            btn_submit.click(timeout=8000)
-                                            clicked = True
-                                        except Exception as e:
-                                            logger.warning(f"  Клик «Откликнуться» не сработал (отдельная страница): {e}")
-                                    else:
-                                        logger.warning(f"  Кнопка «Откликнуться» отсутствует на странице вопросов — пропускаем '{title}'")
-
-                                    if clicked:
-                                        time.sleep(0.5)
-                                        total_count += 1
-                                        stats["responses"] += 1
-                                        company_key = company.strip().lower() if company else ''
-                                        if company_key:
-                                            company_counts[company_key] = company_counts.get(company_key, 0) + 1
-                                        if vacancy_url:
-                                            applied[vacancy_url] = {
-                                                "title": title,
-                                                "company": company,
-                                                "applied_at": datetime.now().isoformat(timespec="seconds"),
-                                                "query": query,
-                                            }
-                                        n = config.BotConfig.SAVE_EVERY_N
-                                        if n <= 1 or total_count % n == 0:
-                                            self._save_applied(applied)
-                                        if config.BotConfig.LOG_RESPONSES_CSV and vacancy_url:
-                                            self._log_response_csv(vacancy_url, title, company, query)
-                                        logger.info(
-                                            f"Отклик #{total_count} | {title or '?'} | {company or '?'} "
-                                            f"('{query}', стр.{count_page + 1})"
-                                        )
-                                    else:
-                                        skip_count += 1
-                                    search_page_url = self._safe_return_to_search(search_page_url)
+                                except Exception:
+                                    pass
 
                     if total_count >= config.BotConfig.MAX_RESPONSES_PER_RUN:
                         break
@@ -761,6 +777,15 @@ class AutoResponsePage(BasePage):
         total_count: int, started_at: datetime, company_counts: dict
     ) -> None:
         db.save_limit_reached(datetime.now())
+        try:
+            Path("artifacts/screenshots").mkdir(parents=True, exist_ok=True)
+            Path("artifacts/html").mkdir(parents=True, exist_ok=True)
+            ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            self.page.screenshot(path=f"artifacts/screenshots/limit_{ts}.png", full_page=True)
+            Path(f"artifacts/html/limit_{ts}.html").write_text(self.page.content(), encoding="utf-8")
+            logger.info(f"  Диагностика лимита: artifacts/screenshots/limit_{ts}.png, artifacts/html/limit_{ts}.html")
+        except Exception as diag_err:
+            logger.warning(f"  Не удалось сохранить диагностику лимита: {diag_err}")
         self._save_applied(applied)
         self._save_manual_review(manual_review)
         self._log_final_stats(query_stats, total_count, started_at, company_counts)

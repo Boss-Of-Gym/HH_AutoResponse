@@ -724,6 +724,51 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
           <label class="toggle"><input type="checkbox" id="bot-csv" onchange="scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">Автоответ на скрининг-вопросы (ИИ)</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">
+              Отвечать на доп. вопросы работодателя через ИИ
+              <i class="info-icon" style="vertical-align:middle;margin-left:4px" data-tip="Если включено, при отклике на вакансию с доп. вопросами бот пытается ответить на них через ИИ-модель (локальную Ollama или Gemini API) на основе вашего профиля. Если модель не уверена в ответе — вакансия, как и раньше, уходит в очередь ручного отклика.">ⓘ</i>
+            </div>
+            <div class="toggle-desc">Требует запущенный Ollama (или ключ Gemini API) — иначе вакансии, как раньше, уходят в ручной отклик</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="ai-enabled" onchange="toggleAiFields();scheduleSave()"><div class="tog-track"></div><div class="tog-knob"></div></label>
+        </div>
+        <div id="ai-fields-wrap" class="form-grid" style="margin-top:12px">
+          <div class="form-group">
+            <label class="form-label">Провайдер</label>
+            <select id="ai-provider" class="form-input" onchange="toggleAiFields();scheduleSave()">
+              <option value="ollama">Ollama (локально, бесплатно)</option>
+              <option value="gemini">Google Gemini API</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Модель</label>
+            <input id="ai-model" class="form-input" type="text" placeholder="qwen2.5:7b" oninput="scheduleSave()">
+            <div class="form-hint">Для Ollama — имя модели из `ollama list`; для Gemini — например gemini-2.0-flash</div>
+          </div>
+          <div class="form-group" id="ai-ollama-url-field">
+            <label class="form-label">Адрес Ollama</label>
+            <input id="ai-ollama-url" class="form-input" type="text" placeholder="http://localhost:11434" oninput="scheduleSave()">
+          </div>
+          <div class="form-group" id="ai-gemini-key-field">
+            <label class="form-label">Gemini API-ключ</label>
+            <input id="ai-gemini-key" class="form-input" type="password" oninput="scheduleSave()">
+          </div>
+          <div class="form-group">
+            <div class="lbl-row">
+              <label class="form-label">Порог уверенности</label>
+              <i class="info-icon" data-tip="Если уверенность ИИ в ответе ниже этого порога — вакансия уходит в ручной отклик вместо автоматической отправки. Выше значение = безопаснее, но меньше вопросов будет отвечено автоматически.">ⓘ</i>
+            </div>
+            <div class="slider-row">
+              <input id="ai-confidence" type="range" min="0" max="1" step="0.05" oninput="syncSlider(this,'ai-confidence-val');scheduleSave()">
+              <span class="slider-val" id="ai-confidence-val">0.7</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══ RESUME ══ -->
@@ -825,6 +870,13 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
               <label class="form-label">Портфолио / личный сайт</label>
               <input id="prof-portfolio" class="form-input" type="text" placeholder="https://..." oninput="scheduleSave();updatePreview()">
             </div>
+          </div>
+          <div class="form-group" style="margin-top:12px">
+            <div class="lbl-row">
+              <label class="form-label">Резюме / о себе — контекст для ИИ-ответов</label>
+              <i class="info-icon" data-tip="Вставьте сюда текст резюме или краткое описание опыта, проектов, достижений. Используется ИИ (раздел Бот → Автоответ на скрининг-вопросы) как основной источник фактов о вас — модель отвечает на вопросы работодателя от лица Senior-специалиста на основе этого текста, а не выдумывает. Если оставить пустым — ИИ использует только поля выше (должность, опыт, навыки).">ⓘ</i>
+            </div>
+            <textarea id="prof-resume-summary" class="form-input" rows="6" placeholder="Например: Senior QA Automation Engineer, 5 лет в тестировании, последние 3 года — автоматизация на Python/Playwright. Руководил переходом с Selenium на Playwright, сократил время прогона регресса вдвое. Опыт работы с CI/CD (GitHub Actions), API-тестированием..." oninput="scheduleSave()"></textarea>
           </div>
         </div>
       </div>
@@ -1145,6 +1197,7 @@ function populateAll() {
   const f = s.filters || {};
   const sc = s.schedule || {};
   const br = s.browser || {};
+  const ai = s.ai || {};
 
   setVal('cred-login', c.login || '');
   setVal('cred-password', c.password || '');
@@ -1161,6 +1214,7 @@ function populateAll() {
   setVal('prof-email', p.email || '');
   setVal('prof-github', p.github || '');
   setVal('prof-portfolio', p.portfolio || '');
+  setVal('prof-resume-summary', p.resume_summary || '');
 
   const areas = Array.isArray(sr.area) ? sr.area : String(sr.area || '113').split(',').map(a=>a.trim()).filter(Boolean);
   renderAreaChips(areas);
@@ -1197,6 +1251,14 @@ function populateAll() {
   setChecked('sched-daily', !!sc.daily_run_enabled);
   setVal('sched-time', sc.daily_run_time || '08:00');
   toggleDailyTime();
+
+  setChecked('ai-enabled', !!ai.enabled);
+  setVal('ai-provider', ai.provider || 'ollama');
+  setVal('ai-model', ai.model || 'qwen2.5:7b');
+  setVal('ai-ollama-url', ai.ollama_url || 'http://localhost:11434');
+  setVal('ai-gemini-key', ai.gemini_api_key || '');
+  setSlider('ai-confidence', 'ai-confidence-val', ai.confidence_threshold ?? 0.7, v => v);
+  toggleAiFields();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1211,6 +1273,7 @@ function collectSettings() {
       key_skills: val('prof-skills'), phone: val('prof-phone'),
       email: val('prof-email'), github: val('prof-github'),
       portfolio: val('prof-portfolio'),
+      resume_summary: val('prof-resume-summary'),
     },
     search: {
       area: getAreaList(),
@@ -1249,6 +1312,14 @@ function collectSettings() {
       locale: val('browser-locale'),
       timezone: val('browser-tz'),
       headless: !checked('browser-headless'),
+    },
+    ai: {
+      enabled: checked('ai-enabled'),
+      provider: val('ai-provider'),
+      model: val('ai-model'),
+      ollama_url: val('ai-ollama-url'),
+      gemini_api_key: val('ai-gemini-key'),
+      confidence_threshold: parseFloat(val('ai-confidence')) || 0.7,
     },
   };
 }
@@ -1966,6 +2037,17 @@ function toggleDailyTime() {
   const w = document.getElementById('daily-time-wrap');
   w.style.opacity = on ? 1 : .45;
   w.style.pointerEvents = on ? 'all' : 'none';
+}
+
+function toggleAiFields() {
+  const on = checked('ai-enabled');
+  const wrap = document.getElementById('ai-fields-wrap');
+  wrap.style.opacity = on ? 1 : .45;
+  wrap.style.pointerEvents = on ? 'all' : 'none';
+
+  const isGemini = val('ai-provider') === 'gemini';
+  document.getElementById('ai-ollama-url-field').style.display = isGemini ? 'none' : '';
+  document.getElementById('ai-gemini-key-field').style.display = isGemini ? '' : 'none';
 }
 
 function updateFilterChips() {
